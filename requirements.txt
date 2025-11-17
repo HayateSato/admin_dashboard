@@ -1,0 +1,23 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+python-dotenv==1.0.0
+psutil==5.9.6
+influxdb-client==1.38.0
+psycopg2-binary==2.9.11
+
+# MQTT communication dependencies
+paho-mqtt==1.6.1
+
+# FL server communication dependencies
+grpcio==1.76.0
+grpcio-tools==1.76.0 
+protobuf==6.33.0
+
+###########################################################################
+# PostgreSQL connector - if psycopg2-binary fails, install it separately:
+# For Windows with Python 3.13+, use precompiled wheels:
+# pip install psycopg2-binary --only-binary :all:
+# Or download from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#psycopg
+
+# gRPC - install separately if needed for FL server communication:
+# pip install grpcio grpcio-tools

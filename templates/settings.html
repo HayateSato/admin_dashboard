@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings - Privacy Umbrella Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-gear"></i> System Settings</h2>
+            <p class="text-muted">Configure InfluxDB, PostgreSQL, MQTT, and Federated Learning server settings</p>
+        </div>
+    </div>
+
+    <!-- InfluxDB Settings -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-database"></i> InfluxDB Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="influx-settings-form">
+                        <div class="mb-3">
+                            <label for="influx-url" class="form-label">InfluxDB URL</label>
+                            <input type="text" class="form-control" id="influx-url"
+                                   value="{{ config.INFLUX_URL }}" placeholder="http://localhost:8086">
+                            <small class="text-muted">InfluxDB server URL</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="influx-token" class="form-label">Token</label>
+                            <input type="password" class="form-control" id="influx-token"
+                                   value="{{ config.INFLUX_TOKEN }}" placeholder="Your InfluxDB token">
+                            <small class="text-muted">InfluxDB authentication token</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="influx-org" class="form-label">Organization</label>
+                            <input type="text" class="form-control" id="influx-org"
+                                   value="{{ config.INFLUX_ORG }}" placeholder="my-org">
+                            <small class="text-muted">InfluxDB organization name</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="influx-bucket-raw" class="form-label">Raw Data Bucket</label>
+                                <input type="text" class="form-control" id="influx-bucket-raw"
+                                       value="{{ config.INFLUX_BUCKET_RAW }}" placeholder="raw_data">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="influx-bucket-anon" class="form-label">Anonymized Data Bucket</label>
+                                <input type="text" class="form-control" id="influx-bucket-anon"
+                                       value="{{ config.INFLUX_BUCKET_ANONYMIZED }}" placeholder="anonymized_data">
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="testInfluxConnection()">
+                                <i class="bi bi-wifi"></i> Test Connection
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="saveInfluxSettings()">
+                                <i class="bi bi-save"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PostgreSQL Settings -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                <!-- <div class="card-header text-white"></div> -->
+                    <h5 class="mb-0"><i class="bi bi-server"></i> PostgreSQL Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="postgres-settings-form">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="postgres-host" class="form-label">Host</label>
+                                <input type="text" class="form-control" id="postgres-host"
+                                       value="{{ config.POSTGRES_HOST }}" placeholder="localhost">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="postgres-port" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="postgres-port"
+                                       value="{{ config.POSTGRES_PORT }}" placeholder="5432">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="postgres-db" class="form-label">Database Name</label>
+                            <input type="text" class="form-control" id="postgres-db"
+                                   value="{{ config.POSTGRES_DB }}" placeholder="privacy_umbrella">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="postgres-user" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="postgres-user"
+                                       value="{{ config.POSTGRES_USER }}" placeholder="postgres">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="postgres-password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="postgres-password"
+                                       value="{{ config.POSTGRES_PASSWORD }}" placeholder="••••••••">
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="testPostgresConnection()">
+                                <i class="bi bi-wifi"></i> Test Connection
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="savePostgresSettings()">
+                                <i class="bi bi-save"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MQTT Settings -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-broadcast"></i> MQTT Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="mqtt-settings-form">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="mqtt-host" class="form-label">Broker Host</label>
+                                <input type="text" class="form-control" id="mqtt-host"
+                                       value="{{ config.MQTT_BROKER_HOST }}" placeholder="localhost">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="mqtt-port" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="mqtt-port"
+                                       value="{{ config.MQTT_BROKER_PORT }}" placeholder="1883">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mqtt-topic-prefix" class="form-label">Topic Prefix</label>
+                            <input type="text" class="form-control" id="mqtt-topic-prefix"
+                                   value="{{ config.MQTT_TOPIC_PREFIX }}" placeholder="privacy">
+                            <small class="text-muted">Prefix for all MQTT topics</small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="testMQTTConnection()">
+                                <i class="bi bi-wifi"></i> Test Connection
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="saveMQTTSettings()">
+                                <i class="bi bi-save"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Federated Learning Server Settings -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Federated Learning Server Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="fl-settings-form">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="fl-host" class="form-label">FL Server Host</label>
+                                <input type="text" class="form-control" id="fl-host"
+                                       value="{{ config.FL_SERVER_HOST }}" placeholder="localhost">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="fl-port" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="fl-port"
+                                       value="{{ config.FL_SERVER_PORT }}" placeholder="8080">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="fl-model-path" class="form-label">Model Path</label>
+                            <input type="text" class="form-control" id="fl-model-path"
+                                   value="{{ config.FL_MODEL_PATH }}" placeholder="/path/to/model">
+                            <small class="text-muted">Path to federated learning model</small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="testFLConnection()">
+                                <i class="bi bi-wifi"></i> Test Connection
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="saveFLSettings()">
+                                <i class="bi bi-save"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Messages -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div id="status-message" class="alert" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show status message
+function showStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('status-message');
+    statusDiv.className = `alert alert-${type}`;
+    statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+
+    setTimeout(() => {
+        statusDiv.style.display = 'none';
+    }, 5000);
+}
+
+// InfluxDB Functions
+async function testInfluxConnection() {
+    showStatus('Testing InfluxDB connection...', 'info');
+    try {
+        const response = await fetch('/api/settings/test-influx', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                url: document.getElementById('influx-url').value,
+                token: document.getElementById('influx-token').value,
+                org: document.getElementById('influx-org').value
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('InfluxDB connection successful!', 'success');
+        } else {
+            showStatus('InfluxDB connection failed: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error testing InfluxDB: ' + error.message, 'danger');
+    }
+}
+
+async function saveInfluxSettings() {
+    showStatus('Saving InfluxDB settings...', 'info');
+    try {
+        const response = await fetch('/api/settings/save-influx', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                url: document.getElementById('influx-url').value,
+                token: document.getElementById('influx-token').value,
+                org: document.getElementById('influx-org').value,
+                bucket_raw: document.getElementById('influx-bucket-raw').value,
+                bucket_anonymized: document.getElementById('influx-bucket-anon').value
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('InfluxDB settings saved successfully!', 'success');
+        } else {
+            showStatus('Failed to save InfluxDB settings: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error saving InfluxDB settings: ' + error.message, 'danger');
+    }
+}
+
+// PostgreSQL Functions
+async function testPostgresConnection() {
+    showStatus('Testing PostgreSQL connection...', 'info');
+    try {
+        const response = await fetch('/api/settings/test-postgres', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('postgres-host').value,
+                port: parseInt(document.getElementById('postgres-port').value),
+                database: document.getElementById('postgres-db').value,
+                user: document.getElementById('postgres-user').value,
+                password: document.getElementById('postgres-password').value
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('PostgreSQL connection successful!', 'success');
+        } else {
+            showStatus('PostgreSQL connection failed: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error testing PostgreSQL: ' + error.message, 'danger');
+    }
+}
+
+async function savePostgresSettings() {
+    showStatus('Saving PostgreSQL settings...', 'info');
+    try {
+        const response = await fetch('/api/settings/save-postgres', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('postgres-host').value,
+                port: parseInt(document.getElementById('postgres-port').value),
+                database: document.getElementById('postgres-db').value,
+                user: document.getElementById('postgres-user').value,
+                password: document.getElementById('postgres-password').value
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('PostgreSQL settings saved successfully!', 'success');
+        } else {
+            showStatus('Failed to save PostgreSQL settings: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error saving PostgreSQL settings: ' + error.message, 'danger');
+    }
+}
+
+// MQTT Functions
+async function testMQTTConnection() {
+    showStatus('Testing MQTT connection...', 'info');
+    try {
+        const response = await fetch('/api/settings/test-mqtt', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('mqtt-host').value,
+                port: parseInt(document.getElementById('mqtt-port').value)
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('MQTT connection successful!', 'success');
+        } else {
+            showStatus('MQTT connection failed: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error testing MQTT: ' + error.message, 'danger');
+    }
+}
+
+async function saveMQTTSettings() {
+    showStatus('Saving MQTT settings...', 'info');
+    try {
+        const response = await fetch('/api/settings/save-mqtt', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('mqtt-host').value,
+                port: parseInt(document.getElementById('mqtt-port').value),
+                topic_prefix: document.getElementById('mqtt-topic-prefix').value
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('MQTT settings saved successfully! Please restart the server for changes to take effect.', 'success');
+        } else {
+            showStatus('Failed to save MQTT settings: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error saving MQTT settings: ' + error.message, 'danger');
+    }
+}
+
+// Federated Learning Functions
+async function testFLConnection() {
+    showStatus('Testing FL Server connection...', 'info');
+    try {
+        const response = await fetch('/api/settings/test-fl', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('fl-host').value,
+                port: parseInt(document.getElementById('fl-port').value)
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('FL Server connection successful!', 'success');
+        } else {
+            showStatus('FL Server connection failed: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error testing FL Server: ' + error.message, 'danger');
+    }
+}
+
+async function saveFLSettings() {
+    showStatus('Saving FL Server settings...', 'info');
+    try {
+        const response = await fetch('/api/settings/save-fl', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('fl-host').value,
+                port: parseInt(document.getElementById('fl-port').value),
+                model_path: document.getElementById('fl-model-path').value
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showStatus('FL Server settings saved successfully!', 'success');
+        } else {
+            showStatus('Failed to save FL Server settings: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showStatus('Error saving FL Server settings: ' + error.message, 'danger');
+    }
+}
+</script>
+{% endblock %}

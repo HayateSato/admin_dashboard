@@ -1,0 +1,89 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+List of relations in privacy_umbrella db
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    
+ Schema |           Name            |   Type   |  Owner
+--------+---------------------------+----------+----------
+ public | admin_users               | table    | postgres
+ public | admin_users_id_seq        | sequence | postgres
+ public | privacy_policies          | table    | postgres
+ public | privacy_policies_id_seq   | sequence | postgres
+ public | users                     | table    | postgres
+ public | users_id_seq              | sequence | postgres
+
+
+
+Note : running schema.sql creates the following tables too but they are not used at the moment 
+ public | anonymization_jobs        | table    | postgres
+ public | anonymization_jobs_id_seq | sequence | postgres
+ public | audit_logs                | table    | postgres
+ public | audit_logs_id_seq         | sequence | postgres
+ public | fl_rounds                 | table    | postgres
+ public | fl_rounds_id_seq          | sequence | postgres
+ public | sessions                  | table    | postgres
+ public | sessions_id_seq           | sequence | postgres
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Table "public.users"
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                           
+      Column      |            Type             | Collation | Nullable |              Default
+------------------+-----------------------------+-----------+----------+-----------------------------------
+ id               | integer                     |           | not null | nextval('users_id_seq'::regclass)
+ unique_key       | character varying(512)      |           | not null |
+ device_id        | character varying(255)      |           |          |
+ created_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ last_session     | timestamp without time zone |           |          |
+ privacy_settings | jsonb                       |           |          |
+ status           | character varying(50)       |           |          | 'active'::character varying
+ notes            | text                        |           |          |
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "idx_users_created_at" btree (created_at)
+    "idx_users_last_session" btree (last_session)
+    "idx_users_unique_key" btree (unique_key)
+    "users_unique_key_key" UNIQUE CONSTRAINT, btree (unique_key)
+Referenced by:
+    TABLE "privacy_policies" CONSTRAINT "privacy_policies_unique_key_fkey" FOREIGN KEY (unique_key) REFERENCES users(unique_key) ON DELETE CASCADE
+    TABLE "sessions" CONSTRAINT "sessions_unique_key_fkey" FOREIGN KEY (unique_key) REFERENCES users(unique_key) ON DELETE CASCADE
+
+
+- - - - - - - - - - - - - - - - - - - - - - 
+privacy_umbrella=# SELECT * FROM users LIMIT 5;
+
+ id |                            unique_key                            |     device_id     |         created_at         |        last_session        |                     privacy_settings                      | status | notes
+----+------------------------------------------------------------------+-------------------+----------------------------+----------------------------+-----------------------------------------------------------+--------+-------
+  1 | 0000000000000000000008008000000000000000000000000000000100000000 | 6c:1d:eb:06:57:9c | 2025-11-09 18:05:40.038288 | 2025-11-11 14:09:58.396988 | {"k_value": 3, "time_window": 30, "auto_anonymize": true} | active |
+  2 | 0000004000000000000000000080000000010000000000000000000000000000 | 6C:1D:EB:04:A9:CE | 2025-11-13 11:42:30.287983 | 2025-11-13 15:02:19.549823 | {"k_value": 5, "time_window": 5, "auto_anonymize": true}  | active |
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Table "public.privacy_policies"
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                         
+   Column    |            Type             | Collation | Nullable |                   Default
+-------------+-----------------------------+-----------+----------+----------------------------------------------
+ id          | integer                     |           | not null | nextval('privacy_policies_id_seq'::regclass)
+ unique_key  | character varying(512)      |           | not null |
+ k_value     | integer                     |           | not null | 5
+ time_window | integer                     |           | not null | 5
+ created_at  | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at  | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ created_by  | character varying(100)      |           |          |
+ is_remote   | boolean                     |           |          | false
+Indexes:
+    "privacy_policies_pkey" PRIMARY KEY, btree (id)
+    "idx_policies_unique_key" btree (unique_key)
+Foreign-key constraints:
+    "privacy_policies_unique_key_fkey" FOREIGN KEY (unique_key) REFERENCES users(unique_key) ON DELETE CASCADE
+
+
+- - - - - - - - - - - - - - - - - - - - - - 
+
+# SELECT * FROM privacy_policies LIMIT 5;
+
+ id |                            unique_key                            | k_value | time_window |         created_at         |         updated_at         | created_by | is_remote
+----+------------------------------------------------------------------+---------+-------------+----------------------------+----------------------------+------------+-----------
+  1 | 0000004000000000000000000080000000010000000000000000000000000000 |       5 |           5 | 2025-11-13 13:04:49.954001 | 2025-11-13 13:04:49.954002 |            | t

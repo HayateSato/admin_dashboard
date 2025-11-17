@@ -1,0 +1,130 @@
+=============================================================================
+PRIVACY UMBRELLA ADMIN DASHBOARD - TO DOs
+=============================================================================
+
+TASK: Patient User Management + Remote Privacy Settings via MQTT
+
+-----------------------------------------------------------------------------
+1. SETUP 
+-----------------------------------------------------------------------------
+
+
+
+cd admin_dashbaord
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+cp .env.example .env
+# Edit .env - set passwords and tokens:
+#   - SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
+#   - POSTGRES_PASSWORD
+#   - INFLUX_TOKEN (get from Hayate - for remote InfluxDB at https://pu-influxdb.smarko-health.de/)
+
+# Start external services (PostgreSQL and Mosquitto only - InfluxDB is remote!)
+# Then:
+python app.py
+# Open http://localhost:5000 (admin/admin123)
+
+-----------------------------------------------------------------------------
+2. TO DO
+-----------------------------------------------------------------------------
+
+Task 1: Patient Management Page 
+BACKEND
+  File: modules/patient_manager.py
+  - Query privacy settings set by patient from Postgres and pass the pass the values to html.
+    We want to show a list of user unique_key, together with following info 
+    - Device ID               (stored in users table)
+    - Last Session            (stored in users table)
+    - K-Value                 (stored in users table)
+    - Time Window             (stored in users table)
+    - Anon Enabled            (stored in users table)
+    - Remote Anon Enabled     (stored in privacy_policies table)
+  - Filter the list by Unique_key, Anon Enabled or Remote Anon Enabled
+
+
+  - Patient Management Page will list all the registered patients and their infomration 
+    - whehther the anonymization is enabled [privacy_settings col in users table]
+    - which privacy setting is applied (kvalue and time window) [privacy_settings col in users table]
+    - whehther remote anonymization is enabled [is_remote col in privacy_policies table]
+FRONTEND
+  File: templates/registered_patients.html
+  - Add JavaScript to list up registered patients and display their privacy settings
+
+  
+Task 2: MQTT Integration 
+BACKEND
+  - Publish a remote command to overwrite the settings inside the flutter app, and receives the reponse
+    - Admin user cannot overwrite setting if the remote anonymization is disabled by patient user 
+    - The process of overwriting the privacy setting happens as follows 
+      1. the new setting from the admin user will be sent to flutter app via MQTT protocols
+      2. the new, adopted setting on the flutter app side will be saved in the app and the new setting is stored in postgres 
+      3. the updated setting will be visible from the admin dashboard via Postgres query
+FRONTEND
+  File: templates/registered_patients.html
+  - Add JavaScript to overwrite the privacy setting
+
+-----------------------------------------------------------------------------
+3. KEY FILES
+-----------------------------------------------------------------------------
+- app.py - Main Flask application (lines 361-476: Patient routes)
+- modules/patient_manager.py - Patient management module
+- modules/mqtt_manager.py - MQTT communication
+- templates/registered_patients.html - Patient management page
+- schema.sql - Database schema
+
+-----------------------------------------------------------------------------
+4. TESTING
+-----------------------------------------------------------------------------
+# Create test patient:
+psql -U postgres -d pu
+INSERT INTO users (unique_key, device_id, privacy_settings, last_session)
+VALUES ('575e50b...', 'test_001', '{"k_value": 5, "remote_anon_enabled": true}', NOW());
+
+# Test API:
+curl http://localhost:5000/api/patients/list
+
+# Test MQTT:
+mosquitto_sub -h localhost -t "privacy/#" -v
+# Edit patient settings in UI, verify message published
+
+-----------------------------------------------------------------------------
+5. ARCHITECTURE 
+-----------------------------------------------------------------------------
+The entry point is app.py (Flask application) that orchestrates 4 main services
+
+app.py orchestrates all features:
+- Patient user management feature
+     │────────────────────────────── patient_manager.py (TO DO)
+     └────────────────────────────── mqtt_manager.py    (TO DO)
+- Central Anonymization feature  ─── anonymization_manager.py 
+- FL Server Management feature   ─── fl_orchestrator.py 
+- Record Linkage feature         ─── record_linkage.py 
+
+
+
+External services (port#):
+- InfluxDB (https://pu-influxdb.smarko-health.de/)
+- Mosquitto (1883)
+- PostgreSQL (5433/5432)
+  Access From	                    Host	          Port	  Configuration
+  Flutter App (external)	        192.168.X.XX	  5433  	postgres_db_config.dart
+  Dashboard Container (internal)	postgres	      5432  	docker-compose.yml
+  FL Server Container (internal)	postgres	      5432	  docker-compose.yml
+
+-----------------------------------------------------------------------------
+6. DOCUMENTATION
+-----------------------------------------------------------------------------
+Read these in order:
+1. HANDOVER.md - Your tasks explained
+2. ARCHITECTURE_EXPLAINED.md - How everything works
+3. DOCKER_SETUP.md - Docker deployment (optional)
+
+-----------------------------------------------------------------------------
+7. TIMELINE
+-----------------------------------------------------------------------------
+I just learned that we will be having a demonstration & final presetration in the last week of Novemeber
+Would it be possible to have everything ready by the 20th November?
+
+

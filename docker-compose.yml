@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: privacy_umbrella_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-privacy_umbrella}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5433:5432" # External access can be made on 5433, but internally it is running on/mapped to 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/dump_clean.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
+    networks:
+      - privacy_umbrella_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-privacy_umbrella}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # InfluxDB Time-Series Database (Remote)
+  # NOTE: InfluxDB is hosted remotely at https://pu-influxdb.smarko-health.de/
+  # No local container needed - admin dashboard connects to remote instance
+
+  # MQTT Broker (Mosquitto)
+  mosquitto:
+    image: eclipse-mosquitto:2.0-openssl
+    container_name: pu_mqtt_broker
+    restart: unless-stopped
+    ports:
+      - "${MQTT_BROKER_PORT:-1883}:1883"
+      - "9001:9001"  # WebSocket port
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - privacy_umbrella_network
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck | grep -v Error || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FL gRPC Server
+  fl_server:
+    build:
+      context: ./modules/utils_fl
+      dockerfile: Dockerfile
+    container_name: privacy_umbrella_fl_server
+    restart: unless-stopped
+    environment:
+      FL_SERVER_HOST: 0.0.0.0
+      FL_SERVER_PORT: 50051
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-privacy_umbrella}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MODEL_SAVE_PATH: /app/models/global_model_latest.json
+    ports:
+      - "${FL_SERVER_PORT:-50051}:50051"
+    volumes:
+      - fl_models:/app/models
+      - fl_logs:/app/logs
+    networks:
+      - privacy_umbrella_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Admin Dashboard (Flask)
+  admin_dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: privacy_umbrella_dashboard
+    restart: unless-stopped
+    environment:
+      # Docker indicator
+      DOCKER_CONTAINER: "true"
+
+      # Flask
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5000
+      FLASK_DEBUG: ${FLASK_DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY:?Please set SECRET_KEY in .env}
+
+      # PostgreSQL
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-privacy_umbrella}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # InfluxDB (Remote)
+      INFLUX_URL: ${INFLUX_URL:-https://pu-influxdb.smarko-health.de}
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG:-mcs-data-labs}
+      INFLUX_BUCKET_RAW: ${INFLUX_BUCKET_RAW:-raw-data}
+      INFLUX_BUCKET_ANON: ${INFLUX_BUCKET_ANON:-anonymized-data}
+
+      # FL Server
+      FL_SERVER_HOST: fl_server
+      FL_SERVER_PORT: 50051
+      FL_MODEL_PATH: /app/models/global_model_latest.json
+
+      # MQTT
+      MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: 1883
+      MQTT_TOPIC_PREFIX: ${MQTT_TOPIC_PREFIX:-privacy}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_DIR: /app/logs
+
+      # Session
+      SESSION_TIMEOUT_HOURS: ${SESSION_TIMEOUT_HOURS:-8}
+
+    ports:
+      - "${FLASK_PORT:-5000}:5000"
+    volumes:
+      - dashboard_logs:/app/logs
+      - ./output/centrally_anonymized_records:/app/modules/utils_central_anon/output
+      - ./output/linked_records:/app/exports
+    networks:
+      - privacy_umbrella_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+      fl_server:
+        condition: service_started
+    # NOTE: InfluxDB dependency removed - using remote instance at https://pu-influxdb.smarko-health.de/
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/login || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Named Volumes
+volumes:
+  postgres_data:
+    driver: local
+  # InfluxDB volumes removed - using remote instance at https://pu-influxdb.smarko-health.de/
+  mosquitto_data:
+    driver: local
+  mosquitto_logs:
+    driver: local
+  fl_models:
+    driver: local
+  fl_logs:
+    driver: local
+  dashboard_logs:
+    driver: local
+  # anon_output and export_data removed - now using bind mounts to ./output/
+
+# Networks
+networks:
+  privacy_umbrella_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

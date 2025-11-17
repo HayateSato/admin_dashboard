@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+{% block title %}FL Orchestration - Privacy Umbrella Admin{% endblock %}
+{% block content %}
+<h1><i class="bi bi-diagram-3"></i> Federated Learning Orchestration</h1>
+
+<!-- FL Server Process Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-server"></i> FL Server Process Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Process Status</label>
+                            <div id="server-process-status">
+                                <span class="badge bg-secondary">Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Process ID</label>
+                            <div id="server-pid">
+                                <span class="text-muted">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Session ID</label>
+                            <div id="server-session-id">
+                                <span class="text-muted">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Connected Clients</label>
+                            <div id="connected-count">
+                                <span class="badge bg-info">0</span> / <span id="expected-count">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Uptime</label>
+                            <div id="server-uptime">
+                                <span class="text-muted">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Expected Clients</label>
+                            <input type="number" id="expected-clients-input" class="form-control form-control-sm"
+                                   value="3" min="1" max="100"
+                                   title="Number of clients expected to participate">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Server Control</label>
+                            <div>
+                                <button id="start-server-btn" class="btn btn-success btn-sm" onclick="startFLServer()">
+                                    <i class="bi bi-play-fill"></i> Start
+                                </button>
+                                <button id="stop-server-btn" class="btn btn-danger btn-sm" onclick="stopFLServer()" disabled>
+                                    <i class="bi bi-stop-fill"></i> Stop
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connected Clients -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-phone"></i> Connected Clients</h5>
+            </div>
+            <div class="card-body">
+                <div id="clients-list">
+                    <p class="text-muted">No clients connected</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Training Statistics -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Training Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <div class="stat-box">
+                            <label class="form-label fw-bold">Weights Received</label>
+                            <div class="stat-value" id="weights-received">
+                                <span class="badge bg-primary">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="stat-box">
+                            <label class="form-label fw-bold">Metrics Received</label>
+                            <div class="stat-value" id="metrics-received">
+                                <span class="badge bg-primary">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="stat-box">
+                            <label class="form-label fw-bold">Aggregations Completed</label>
+                            <div class="stat-value" id="aggregations-completed">
+                                <span class="badge bg-success">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="stat-box">
+                            <label class="form-label fw-bold">Last Aggregation</label>
+                            <div class="stat-value" id="last-aggregation">
+                                <span class="text-muted">Never</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Metrics -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Client Training Results</h5>
+            </div>
+            <div class="card-body">
+                <div id="client-metrics-list">
+                    <p class="text-muted">No training results yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Model Info -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-cube"></i> Global Model Information</h5>
+            </div>
+            <div class="card-body">
+                <div id="global-model-info">
+                    <p class="text-muted">Loading model information...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-box {
+    padding: 10px;
+    border-left: 3px solid #0d6efd;
+    background-color: #f8f9fa;
+}
+.stat-value {
+    font-size: 1.2em;
+    margin-top: 5px;
+}
+.client-card {
+    border-left: 3px solid #198754;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f8f9fa;
+}
+.client-metrics-card {
+    border: 1px solid #dee2e6;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+</style>
+
+<script>
+let serverStatusInterval;
+let clientsInterval;
+let statsInterval;
+let modelInterval;
+
+// Start auto-refresh on page load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshServerStatus();
+    refreshClients();
+    refreshTrainingStats();
+    refreshGlobalModel();
+
+    // Set up intervals
+    serverStatusInterval = setInterval(refreshServerStatus, 2000);  // 2s
+    clientsInterval = setInterval(refreshClients, 3000);            // 3s
+    statsInterval = setInterval(refreshTrainingStats, 5000);        // 5s
+    modelInterval = setInterval(refreshGlobalModel, 10000);         // 10s
+});
+
+// Clean up intervals when page unloads
+window.addEventListener('beforeunload', function() {
+    clearInterval(serverStatusInterval);
+    clearInterval(clientsInterval);
+    clearInterval(statsInterval);
+    clearInterval(modelInterval);
+});
+
+async function startFLServer() {
+    try {
+        // Get expected clients count from input
+        const expectedClientsInput = document.getElementById('expected-clients-input');
+        const expectedClients = parseInt(expectedClientsInput.value) || 3;
+
+        // Validate input
+        if (expectedClients < 1 || expectedClients > 100) {
+            alert('Expected clients must be between 1 and 100');
+            return;
+        }
+
+        const response = await fetch('/api/fl/server/start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                expected_clients: expectedClients
+            })
+        });
+        const result = await response.json();
+
+        if (result.status === 'started') {
+            alert(`FL Server started successfully!\\nPID: ${result.pid}\\nExpected Clients: ${expectedClients}`);
+            refreshServerStatus();
+        } else if (result.status === 'already_running') {
+            alert('FL Server is already running');
+        } else {
+            alert(`Failed to start server: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error starting FL server:', error);
+        alert('Failed to start FL server: ' + error);
+    }
+}
+
+async function stopFLServer() {
+    if (!confirm('Are you sure you want to stop the FL server? This will disconnect all clients.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/fl/server/stop', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        const result = await response.json();
+
+        if (result.status === 'stopped' || result.status === 'killed') {
+            alert('FL Server stopped successfully');
+            refreshServerStatus();
+        } else {
+            alert(`Failed to stop server: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error stopping FL server:', error);
+        alert('Failed to stop FL server: ' + error);
+    }
+}
+
+async function refreshServerStatus() {
+    try {
+        // Get process status
+        const processResp = await fetch('/api/fl/server/status');
+        const processData = await processResp.json();
+
+        const statusIndicator = document.getElementById('server-process-status');
+        const pidElement = document.getElementById('server-pid');
+        const startBtn = document.getElementById('start-server-btn');
+        const stopBtn = document.getElementById('stop-server-btn');
+
+        if (processData.running) {
+            statusIndicator.innerHTML = '<span class="badge bg-success">Running</span>';
+            pidElement.innerHTML = `<strong>${processData.pid}</strong>`;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+
+            // Get detailed status via gRPC
+            const detailsResp = await fetch('/api/fl/server/status-details');
+            const details = await detailsResp.json();
+
+            if (details.running) {
+                document.getElementById('server-session-id').innerHTML =
+                    `<code class="small">${details.session_id.substring(0, 15)}...</code>`;
+                document.getElementById('connected-count').innerHTML =
+                    `<span class="badge bg-info">${details.connected_clients_count}</span>`;
+                document.getElementById('expected-count').textContent = details.expected_clients;
+
+                if (details.server_start_time) {
+                    const startTime = new Date(details.server_start_time);
+                    const uptime = Math.floor((new Date() - startTime) / 1000);
+                    const minutes = Math.floor(uptime / 60);
+                    const seconds = uptime % 60;
+                    document.getElementById('server-uptime').innerHTML =
+                        `<span class="badge bg-secondary">${minutes}m ${seconds}s</span>`;
+                }
+            }
+        } else {
+            statusIndicator.innerHTML = '<span class="badge bg-danger">Stopped</span>';
+            pidElement.innerHTML = '<span class="text-muted">N/A</span>';
+            document.getElementById('server-session-id').innerHTML = '<span class="text-muted">N/A</span>';
+            document.getElementById('connected-count').innerHTML = '<span class="badge bg-secondary">0</span>';
+            document.getElementById('expected-count').textContent = '0';
+            document.getElementById('server-uptime').innerHTML = '<span class="text-muted">N/A</span>';
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+    } catch (error) {
+        console.error('Error refreshing server status:', error);
+    }
+}
+
+async function refreshClients() {
+    try {
+        const response = await fetch('/api/fl/clients');
+        const clients = await response.json();
+
+        const clientsList = document.getElementById('clients-list');
+
+        if (clients.length === 0) {
+            clientsList.innerHTML = '<p class="text-muted">No clients connected</p>';
+            return;
+        }
+
+        let html = '<div class="row">';
+        clients.forEach(client => {
+            const joinedTime = new Date(client.joined_at).toLocaleString();
+            const statusBadge = client.has_sent_weights
+                ? '<span class="badge bg-success">Weights Sent</span>'
+                : '<span class="badge bg-warning">Connected</span>';
+            const metricsBadge = client.has_sent_metrics
+                ? '<span class="badge bg-info">Metrics Sent</span>'
+                : '<span class="badge bg-secondary">No Metrics</span>';
+
+            html += `
+                <div class="col-md-6 mb-2">
+                    <div class="client-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="bi bi-phone"></i> ${client.client_id}</strong><br>
+                                <small class="text-muted">Joined: ${joinedTime}</small>
+                            </div>
+                            <div class="text-end">
+                                ${statusBadge}<br>
+                                ${metricsBadge}
+                            </div>
+                        </div>
+                        ${client.num_trees > 0 ? `
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Trees: ${client.num_trees} |
+                                    Size: ${(client.model_size_bytes / 1024).toFixed(2)} KB
+                                </small>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        clientsList.innerHTML = html;
+    } catch (error) {
+        console.error('Error refreshing clients:', error);
+    }
+}
+
+async function refreshTrainingStats() {
+    try {
+        const response = await fetch('/api/fl/training/stats');
+        const stats = await response.json();
+
+        document.getElementById('weights-received').innerHTML =
+            `<span class="badge bg-primary">${stats.total_weights_received}</span>`;
+        document.getElementById('metrics-received').innerHTML =
+            `<span class="badge bg-primary">${stats.total_metrics_received}</span>`;
+        document.getElementById('aggregations-completed').innerHTML =
+            `<span class="badge bg-success">${stats.aggregations_completed}</span>`;
+
+        if (stats.last_aggregation_time) {
+            const lastAgg = new Date(stats.last_aggregation_time).toLocaleString();
+            document.getElementById('last-aggregation').innerHTML =
+                `<span class="text-success"><strong>${lastAgg}</strong></span>`;
+        } else {
+            document.getElementById('last-aggregation').innerHTML =
+                '<span class="text-muted">Never</span>';
+        }
+
+        // Display client metrics
+        const metricsList = document.getElementById('client-metrics-list');
+        if (stats.client_metrics && stats.client_metrics.length > 0) {
+            let html = '<div class="row">';
+            stats.client_metrics.forEach(metric => {
+                const accuracyPercent = (metric.accuracy * 100).toFixed(2);
+                const accuracyClass = metric.accuracy >= 0.8 ? 'bg-success' :
+                                     metric.accuracy >= 0.6 ? 'bg-warning' : 'bg-danger';
+
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3">
+                                    <i class="bi bi-phone"></i> ${metric.client_id}
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="d-flex flex-column">
+                                            <small class="text-muted">Accuracy</small>
+                                            <span class="badge ${accuracyClass} mt-1">${accuracyPercent}%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="d-flex flex-column">
+                                            <small class="text-muted">F1 Score</small>
+                                            <span class="badge bg-info mt-1">${metric.f1_score.toFixed(4)}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-database"></i> Training Samples:
+                                            <strong>${metric.training_samples.toLocaleString()}</strong>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            metricsList.innerHTML = html;
+        } else {
+            metricsList.innerHTML = '<p class="text-muted">No training results yet</p>';
+        }
+    } catch (error) {
+        console.error('Error refreshing training stats:', error);
+    }
+}
+
+async function refreshGlobalModel() {
+    try {
+        const response = await fetch('/api/fl/global-model');
+        const model = await response.json();
+
+        const modelInfo = document.getElementById('global-model-info');
+
+        if (model.error) {
+            modelInfo.innerHTML = `<p class="text-muted">${model.error}</p>`;
+            return;
+        }
+
+        const timestamp = model.timestamp ? new Date(model.timestamp).toLocaleString() : 'Unknown';
+        const accuracy = model.accuracy ? `${(model.accuracy * 100).toFixed(2)}%` : 'N/A';
+
+        modelInfo.innerHTML = `
+            <div class="row mb-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Round Number</label>
+                    <div><span class="badge bg-primary fs-6">${model.round_number || 0}</span></div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Last Updated</label>
+                    <div><small>${timestamp}</small></div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Accuracy</label>
+                    <div><span class="badge bg-success">${accuracy}</span></div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Trees</label>
+                    <div><span class="badge bg-secondary">${model.num_trees || 0}</span></div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Features</label>
+                    <div><span class="badge bg-info">${model.feature_count || 0}</span></div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Client Contributions</label>
+                    <div><span class="badge bg-warning text-dark">${model.client_contributions_count || 0} clients</span></div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">File Size</label>
+                    <div><small>${model.file_size_kb ? model.file_size_kb.toFixed(2) + ' KB' : 'N/A'}</small></div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error refreshing global model:', error);
+    }
+}
+</script>
+{% endblock %}

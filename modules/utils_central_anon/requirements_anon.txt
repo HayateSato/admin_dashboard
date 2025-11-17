@@ -1,0 +1,8 @@
+# Central ECG Anonymization - Python Dependencies
+
+# Core dependencies (always required)
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# InfluxDB support (required for production use)
+influxdb-client>=1.38.0
