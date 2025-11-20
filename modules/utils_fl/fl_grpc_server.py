@@ -32,6 +32,9 @@ class FederatedLearningServicer(federated_learning_pb2_grpc.FederatedLearningSer
         self.last_aggregation_time = 0
         self.aggregation_in_progress = False
 
+        # Persistent metrics history (survives session resets)
+        self.client_metrics_history = []  # List of {client_id, metrics, timestamp, session_id}
+
         if self.expected_clients == 1:
             logger.info("gRPC Federated Learning Server initialized (Single Client Mode)")
         else :
@@ -405,7 +408,7 @@ class FederatedLearningServicer(federated_learning_pb2_grpc.FederatedLearningSer
     def SendMetrics(self, request, context):
         """Receive evaluation metrics from clients"""
         client_id = request.client_id
-        
+
         try:
             metrics = {
                 'accuracy': request.metrics.accuracy,
@@ -417,17 +420,25 @@ class FederatedLearningServicer(federated_learning_pb2_grpc.FederatedLearningSer
                 'training_samples': request.metrics.training_samples,
                 'validation_samples': request.metrics.validation_samples
             }
-            
+
             with self.lock:
                 self.client_metrics[client_id] = metrics
                 self.total_metrics_received += 1
 
+                # Save to persistent history (survives session resets)
+                self.client_metrics_history.append({
+                    'client_id': client_id,
+                    'metrics': metrics.copy(),
+                    'timestamp': time.time(),
+                    'session_id': self.session_id
+                })
+
             logger.info(f"Received metrics from {client_id}: "
                         f"Accuracy={metrics['accuracy']:.4f}, "
                         f"F1={metrics['f1_score']:.4f}")
-            
+
             return federated_learning_pb2.MetricsResponse(success=True)
-            
+
         except Exception as e:
             logger.error(f"Error processing metrics from {client_id}: {e}")
             return federated_learning_pb2.MetricsResponse(success=False)
@@ -496,7 +507,18 @@ class FederatedLearningServicer(federated_learning_pb2_grpc.FederatedLearningSer
         try:
             client_metrics_list = []
             with self.lock:
-                for client_id, metrics in self.client_metrics.items():
+                # Use persistent history instead of current session metrics
+                # Get the most recent metrics for each client from history
+                client_latest_metrics = {}
+                for history_entry in self.client_metrics_history:
+                    client_id = history_entry['client_id']
+                    # Keep only the most recent entry per client
+                    if client_id not in client_latest_metrics or history_entry['timestamp'] > client_latest_metrics[client_id]['timestamp']:
+                        client_latest_metrics[client_id] = history_entry
+
+                # Convert to protobuf format
+                for client_id, entry in client_latest_metrics.items():
+                    metrics = entry['metrics']
                     client_metric = federated_learning_pb2.ClientMetricsSummary(
                         client_id=client_id,
                         accuracy=metrics.get('accuracy', 0.0),

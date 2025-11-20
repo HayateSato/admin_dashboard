@@ -17,14 +17,15 @@ logger = logging.getLogger(__name__)
 class MQTTManager:
     """Manages MQTT connections and message publishing for remote device control"""
 
-    def __init__(self, broker_host: str, broker_port: int, topic_prefix: str = "privacy"):
+    def __init__(self, broker_host: str, broker_port: int, topic_prefix: str = "anonymization"):
         """
         Initialize MQTT Manager
 
         Args:
             broker_host: MQTT broker hostname or IP
             broker_port: MQTT broker port (default: 1883)
-            topic_prefix: Topic prefix for all messages (default: "privacy")
+            topic_prefix: Topic prefix for all messages (default: "anonymization")
+                         IMPORTANT: Must match Flutter app's topic prefix
         """
         self.broker_host = broker_host
         self.broker_port = broker_port
@@ -32,6 +33,7 @@ class MQTTManager:
         self.client = None
         self.connected = False
         self.ack_callbacks = {}  # Store callbacks for acknowledgments
+        self.response_callbacks = {}  # Store callbacks for Flutter responses
 
         logger.info(f"MQTT Manager initialized: {broker_host}:{broker_port}, prefix='{topic_prefix}'")
 
@@ -72,10 +74,15 @@ class MQTTManager:
             self.connected = True
             logger.info("[MQTT] Connected to MQTT broker successfully")
 
-            # Subscribe to acknowledgment topics
+            # Subscribe to acknowledgment topics (legacy)
             ack_topic = f"{self.topic_prefix}/+/ack"
             client.subscribe(ack_topic)
             logger.info(f"[MQTT] Subscribed to acknowledgment topic: {ack_topic}")
+
+            # Subscribe to responses topic (Flutter app responses)
+            response_topic = f"{self.topic_prefix}/responses"
+            client.subscribe(response_topic)
+            logger.info(f"[MQTT] Subscribed to responses topic: {response_topic}")
         else:
             self.connected = False
             logger.error(f"[MQTT] ERROR: Connection failed with code {rc}")
@@ -95,7 +102,7 @@ class MQTTManager:
             payload = msg.payload.decode('utf-8')
             logger.info(f"📬 Received MQTT message on {topic}: {payload}")
 
-            # Parse acknowledgment messages
+            # Parse acknowledgment messages (legacy format)
             if '/ack' in topic:
                 data = json.loads(payload)
                 unique_key = data.get('unique_key')
@@ -104,6 +111,28 @@ class MQTTManager:
                 if unique_key in self.ack_callbacks:
                     self.ack_callbacks[unique_key](data)
                     del self.ack_callbacks[unique_key]  # Remove after calling
+
+            # Parse Flutter app responses
+            elif '/responses' in topic:
+                data = json.loads(payload)
+                response_type = data.get('response', 'unknown')
+                message = data.get('message', 'No message')
+                k_value = data.get('kValue')
+
+                logger.info(f"[MQTT] Flutter app response: {response_type} - {message}")
+
+                if response_type == 'success':
+                    logger.info(f"[MQTT] ✅ Settings applied successfully (K={k_value})")
+                elif response_type == 'error':
+                    logger.error(f"[MQTT] ❌ Settings application failed: {message}")
+                elif response_type == 'unauthorized':
+                    logger.warning(f"[MQTT] ⚠️  Unauthorized: {message}")
+
+                # Call registered callback if exists
+                unique_key = data.get('unique_key')
+                if unique_key and unique_key in self.response_callbacks:
+                    self.response_callbacks[unique_key](data)
+                    del self.response_callbacks[unique_key]
 
         except Exception as e:
             logger.error(f"Error processing MQTT message: {e}")
@@ -129,13 +158,17 @@ class MQTTManager:
             return False
 
         try:
-            topic = f"{self.topic_prefix}/settings/{unique_key}"
+            # IMPORTANT: Must use 'commands' topic to match Flutter app subscription
+            # Flutter app subscribes to: anonymization/commands
+            topic = f"{self.topic_prefix}/commands"
 
+            # Format message to match Flutter app expectations
+            # Flutter app expects: kValue, timeWindow (not k_value, time_window)
             message = {
                 'unique_key': unique_key,
-                'k_value': settings.get('k_value'),
-                'time_window': settings.get('time_window'),
-                'auto_anonymize': settings.get('auto_anonymize'),
+                'kValue': settings.get('k_value'),  # camelCase for Flutter
+                'timeWindow': settings.get('time_window'),  # camelCase for Flutter
+                'autoAnonymize': settings.get('auto_anonymize'),  # camelCase for Flutter
                 'timestamp': datetime.now().isoformat(),
                 'source': 'admin_dashboard'
             }
@@ -147,13 +180,15 @@ class MQTTManager:
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 logger.info(f"✅ Published settings update to {topic}")
                 logger.info(f"   Settings: K={settings.get('k_value')}, TimeWindow={settings.get('time_window')}s, AutoAnon={settings.get('auto_anonymize')}")
+                logger.info(f"   Target: {unique_key[:16]}...")
+                logger.info(f"   Waiting for response on {self.topic_prefix}/responses...")
                 return True
             else:
                 logger.error(f"❌ Failed to publish settings update (rc={result.rc})")
                 return False
 
         except Exception as e:
-            logger.error(f"Error publishing settings update: {e}")
+            logger.error(f"❌ Error publishing settings update: {e}")
             return False
 
     def publish_remote_anon_activation(self, unique_key: str, enabled: bool) -> bool:
@@ -187,10 +222,10 @@ class MQTTManager:
 
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 status = "ENABLED" if enabled else "DISABLED"
-                logger.info(f"✅ Published remote anonymization {status} to {topic}")
+                logger.info(f"Published remote anonymization {status} to {topic}")
                 return True
             else:
-                logger.error(f"❌ Failed to publish remote anon activation (rc={result.rc})")
+                logger.error(f"Failed to publish remote anon activation (rc={result.rc})")
                 return False
 
         except Exception as e:

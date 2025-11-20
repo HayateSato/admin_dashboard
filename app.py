@@ -82,10 +82,11 @@ record_linkage = RecordLinkage(config)
 patient_manager = PatientManager(config)
 
 # Initialize MQTT manager
+# IMPORTANT: topic_prefix must match Flutter app (anonymization)
 mqtt_manager = MQTTManager(
     broker_host=config.MQTT_BROKER_HOST,
     broker_port=config.MQTT_BROKER_PORT,
-    topic_prefix='privacy'
+    topic_prefix='anonymization'  # Changed from 'privacy' to match Flutter app
 )
 # Connect to MQTT broker (will log error if broker not available)
 try:

@@ -38,9 +38,9 @@ class PatientManager:
                     user=self.config.POSTGRES_USER,
                     password=self.config.POSTGRES_PASSWORD
                 )
-                logger.info("✅ Connected to PostgreSQL")
+                logger.info("Connected to PostgreSQL")
             except Exception as e:
-                logger.error(f"❌ Failed to connect to PostgreSQL: {e}")
+                logger.error(f"Failed to connect to PostgreSQL: {e}")
                 raise
         return self.connection
 
@@ -112,11 +112,11 @@ class PatientManager:
                 patients.append(patient)
 
             cursor.close()
-            logger.info(f"✅ Retrieved {len(patients)} patients from database")
+            logger.info(f"Retrieved {len(patients)} patients from database")
             return patients
 
         except Exception as e:
-            logger.error(f"❌ Error retrieving patients: {e}")
+            logger.error(f"Error retrieving patients: {e}")
             return []
 
     def get_patient_by_unique_key(self, unique_key: str) -> Optional[Dict]:
@@ -174,7 +174,7 @@ class PatientManager:
             return patient
 
         except Exception as e:
-            logger.error(f"❌ Error retrieving patient {unique_key[:16]}...: {e}")
+            logger.error(f"Error retrieving patient {unique_key[:16]}...: {e}")
             return None
 
     def update_privacy_settings(self, unique_key: str, settings: Dict) -> bool:
@@ -209,14 +209,14 @@ class PatientManager:
             cursor.close()
 
             if affected > 0:
-                logger.info(f"✅ Updated privacy settings for {unique_key[:16]}...")
+                logger.info(f"Updated privacy settings for {unique_key[:16]}...")
                 return True
             else:
-                logger.warning(f"⚠️  No patient found with unique_key {unique_key[:16]}...")
+                logger.warning(f"No patient found with unique_key {unique_key[:16]}...")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Error updating privacy settings: {e}")
+            logger.error(f"Error updating privacy settings: {e}")
             if conn:
                 conn.rollback()
             return False
@@ -263,11 +263,11 @@ class PatientManager:
             conn.commit()
             cursor.close()
 
-            logger.info(f"✅ Updated remote anonymization status for {unique_key[:16]}... to {enabled}")
+            logger.info(f"Updated remote anonymization status for {unique_key[:16]}... to {enabled}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Error updating remote anon status: {e}")
+            logger.error(f"Error updating remote anon status: {e}")
             if conn:
                 conn.rollback()
             return False
@@ -312,11 +312,11 @@ class PatientManager:
                 })
 
             cursor.close()
-            logger.info(f"✅ Found {len(patients)} patients with remote anonymization enabled")
+            logger.info(f"Found {len(patients)} patients with remote anonymization enabled")
             return patients
 
         except Exception as e:
-            logger.error(f"❌ Error retrieving patients with remote anon enabled: {e}")
+            logger.error(f"Error retrieving patients with remote anon enabled: {e}")
             return []
 
     def close(self):

@@ -7,7 +7,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-dark text-white">
                 <h5 class="mb-0"><i class="bi bi-server"></i> FL Server Process Status</h5>
             </div>
             <div class="card-body">
@@ -40,7 +40,7 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Connected Clients</label>
                             <div id="connected-count">
-                                <span class="badge bg-info">0</span> / <span id="expected-count">0</span>
+                                <span class="badge bg-secondary">0</span> / <span id="expected-count">0</span>
                             </div>
                         </div>
                     </div>
@@ -83,7 +83,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header bg-success text-white">
+            <div class="card-header bg-dark text-white">
                 <h5 class="mb-0"><i class="bi bi-phone"></i> Connected Clients</h5>
             </div>
             <div class="card-body">
@@ -99,7 +99,7 @@
 <div class="row mb-4">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header bg-info text-white">
+            <div class="card-header bg-dark text-white">
                 <h5 class="mb-0"><i class="bi bi-graph-up"></i> Training Statistics</h5>
             </div>
             <div class="card-body">
@@ -108,7 +108,7 @@
                         <div class="stat-box">
                             <label class="form-label fw-bold">Weights Received</label>
                             <div class="stat-value" id="weights-received">
-                                <span class="badge bg-primary">0</span>
+                                <span class="badge bg-secondary">0</span>
                             </div>
                         </div>
                     </div>
@@ -116,7 +116,7 @@
                         <div class="stat-box">
                             <label class="form-label fw-bold">Metrics Received</label>
                             <div class="stat-value" id="metrics-received">
-                                <span class="badge bg-primary">0</span>
+                                <span class="badge bg-secondary">0</span>
                             </div>
                         </div>
                     </div>
@@ -124,7 +124,7 @@
                         <div class="stat-box">
                             <label class="form-label fw-bold">Aggregations Completed</label>
                             <div class="stat-value" id="aggregations-completed">
-                                <span class="badge bg-success">0</span>
+                                <span class="badge bg-secondary">0</span>
                             </div>
                         </div>
                     </div>
@@ -144,7 +144,7 @@
     <!-- Client Metrics -->
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header bg-dark text-white">
                 <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Client Training Results</h5>
             </div>
             <div class="card-body">
@@ -295,7 +295,7 @@ async function refreshServerStatus() {
         const stopBtn = document.getElementById('stop-server-btn');
 
         if (processData.running) {
-            statusIndicator.innerHTML = '<span class="badge bg-success">Running</span>';
+            statusIndicator.innerHTML = '<span class="badge bg-secondary">Running</span>';
             pidElement.innerHTML = `<strong>${processData.pid}</strong>`;
             startBtn.disabled = true;
             stopBtn.disabled = false;
@@ -308,7 +308,7 @@ async function refreshServerStatus() {
                 document.getElementById('server-session-id').innerHTML =
                     `<code class="small">${details.session_id.substring(0, 15)}...</code>`;
                 document.getElementById('connected-count').innerHTML =
-                    `<span class="badge bg-info">${details.connected_clients_count}</span>`;
+                    `<span class="badge bg-secondary">${details.connected_clients_count}</span>`;
                 document.getElementById('expected-count').textContent = details.expected_clients;
 
                 if (details.server_start_time) {
@@ -321,7 +321,7 @@ async function refreshServerStatus() {
                 }
             }
         } else {
-            statusIndicator.innerHTML = '<span class="badge bg-danger">Stopped</span>';
+            statusIndicator.innerHTML = '<span class="badge bg-secondary">Stopped</span>';
             pidElement.innerHTML = '<span class="text-muted">N/A</span>';
             document.getElementById('server-session-id').innerHTML = '<span class="text-muted">N/A</span>';
             document.getElementById('connected-count').innerHTML = '<span class="badge bg-secondary">0</span>';
@@ -351,10 +351,10 @@ async function refreshClients() {
         clients.forEach(client => {
             const joinedTime = new Date(client.joined_at).toLocaleString();
             const statusBadge = client.has_sent_weights
-                ? '<span class="badge bg-success">Weights Sent</span>'
-                : '<span class="badge bg-warning">Connected</span>';
+                ? '<span class="badge bg-secondary">Weights Sent</span>'
+                : '<span class="badge bg-secondary">Connected</span>';
             const metricsBadge = client.has_sent_metrics
-                ? '<span class="badge bg-info">Metrics Sent</span>'
+                ? '<span class="badge bg-secondary">Metrics Sent</span>'
                 : '<span class="badge bg-secondary">No Metrics</span>';
 
             html += `
@@ -396,16 +396,16 @@ async function refreshTrainingStats() {
         const stats = await response.json();
 
         document.getElementById('weights-received').innerHTML =
-            `<span class="badge bg-primary">${stats.total_weights_received}</span>`;
+            `<span class="badge bg-secondary">${stats.total_weights_received}</span>`;
         document.getElementById('metrics-received').innerHTML =
-            `<span class="badge bg-primary">${stats.total_metrics_received}</span>`;
+            `<span class="badge bg-secondary">${stats.total_metrics_received}</span>`;
         document.getElementById('aggregations-completed').innerHTML =
-            `<span class="badge bg-success">${stats.aggregations_completed}</span>`;
+            `<span class="badge bg-secondary">${stats.aggregations_completed}</span>`;
 
         if (stats.last_aggregation_time) {
             const lastAgg = new Date(stats.last_aggregation_time).toLocaleString();
             document.getElementById('last-aggregation').innerHTML =
-                `<span class="text-success"><strong>${lastAgg}</strong></span>`;
+                `<span class="text-dark"><strong>${lastAgg}</strong></span>`;
         } else {
             document.getElementById('last-aggregation').innerHTML =
                 '<span class="text-muted">Never</span>';
@@ -417,8 +417,6 @@ async function refreshTrainingStats() {
             let html = '<div class="row">';
             stats.client_metrics.forEach(metric => {
                 const accuracyPercent = (metric.accuracy * 100).toFixed(2);
-                const accuracyClass = metric.accuracy >= 0.8 ? 'bg-success' :
-                                     metric.accuracy >= 0.6 ? 'bg-warning' : 'bg-danger';
 
                 html += `
                     <div class="col-md-6 mb-3">
@@ -431,13 +429,13 @@ async function refreshTrainingStats() {
                                     <div class="col-6">
                                         <div class="d-flex flex-column">
                                             <small class="text-muted">Accuracy</small>
-                                            <span class="badge ${accuracyClass} mt-1">${accuracyPercent}%</span>
+                                            <span class="badge bg-secondary mt-1">${accuracyPercent}%</span>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="d-flex flex-column">
                                             <small class="text-muted">F1 Score</small>
-                                            <span class="badge bg-info mt-1">${metric.f1_score.toFixed(4)}</span>
+                                            <span class="badge bg-secondary mt-1">${metric.f1_score.toFixed(4)}</span>
                                         </div>
                                     </div>
                                     <div class="col-12 mt-2">

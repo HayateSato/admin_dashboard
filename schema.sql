@@ -78,10 +78,14 @@ CREATE TABLE IF NOT EXISTS privacy_policies (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100),                  -- admin username who created/updated
     is_remote BOOLEAN DEFAULT FALSE,          -- TRUE if set remotely by admin
+    consent_given BOOLEAN DEFAULT FALSE,      -- User consent for remote management
+    consent_timestamp TIMESTAMP,              -- When consent was given
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Last policy update
     FOREIGN KEY (unique_key) REFERENCES users(unique_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_policies_unique_key ON privacy_policies(unique_key);
+CREATE UNIQUE INDEX IF NOT EXISTS privacy_policies_unique_key_unique ON privacy_policies(unique_key);
 
 -- -- Audit log table -----------------------------------------------------------------------
 -- -- Track all admin actions for compliance
