@@ -3,7 +3,7 @@
 {% block content %}
 <h1><i class="bi bi-link-45deg"></i> Record Linkage - Patient Data Fetching</h1>
 
-<div class="alert alert-info">
+<div class="alert alert-secondary">
     <i class="bi bi-info-circle"></i>
     <strong>Privacy-Preserving Record Linkage:</strong> Enter patient's personal identifiers (name, DoB, gender).
     The system will hash them using SHA256 to generate unique_key and fetch data from InfluxDB and PostgreSQL.
@@ -11,7 +11,7 @@
 
 <!-- Patient Data Fetch Form -->
 <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
+    <div class="card-header bg-dark text-white">
         <i class="bi bi-person-badge"></i> Patient Information
     </div>
     <div class="card-body">
@@ -82,7 +82,7 @@
             </div>
 
             <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary btn-lg">
+                <button type="submit" class="btn btn-dark btn-lg">
                     <i class="bi bi-search"></i> Fetch Patient Data
                 </button>
             </div>
@@ -92,7 +92,7 @@
 
 <!-- Loading Indicator -->
 <div id="loadingIndicator" class="text-center my-4" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
+    <div class="spinner-border text-secondary" role="status">
         <span class="visually-hidden">Loading...</span>
     </div>
     <p class="mt-2">Fetching patient data...</p>
@@ -102,7 +102,7 @@
 <div id="resultsSection" style="display: none;">
     <!-- Query Summary -->
     <div class="card mb-3">
-        <div class="card-header bg-success text-white">
+        <div class="card-header bg-dark text-white">
             <i class="bi bi-check-circle"></i> Query Summary
         </div>
         <div class="card-body">
@@ -227,10 +227,10 @@
             <i class="bi bi-download"></i> Export Data
         </div>
         <div class="card-body">
-            <button class="btn btn-success me-2" id="exportCsvBtn">
+            <button class="btn btn-dark me-2" id="exportCsvBtn">
                 <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
             </button>
-            <button class="btn btn-info" id="exportJsonBtn">
+            <button class="btn btn-secondary" id="exportJsonBtn">
                 <i class="bi bi-file-earmark-code"></i> Export to JSON
             </button>
             <p class="text-muted mt-2 mb-0">

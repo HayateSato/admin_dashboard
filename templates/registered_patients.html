@@ -14,7 +14,7 @@
     <!-- MQTT Connection Status -->
     <div class="row mb-3">
         <div class="col">
-            <div class="alert alert-info" role="alert">
+            <div class="alert alert-secondary" role="alert">
                 <i class="bi bi-info-circle"></i>
                 <strong>MQTT Status:</strong> <span id="mqtt-status">Checking...</span>
             </div>
@@ -37,7 +37,7 @@
             </select>
         </div>
         <div class="col-md-3 text-end">
-            <button class="btn btn-primary" onclick="loadPatients()">
+            <button class="btn btn-dark" onclick="loadPatients()">
                 <i class="bi bi-arrow-clockwise"></i> Refresh
             </button>
         </div>
@@ -51,7 +51,7 @@
                     <h5 class="mb-0">Registered Patients List</h5>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
+                    <div class="alert alert-secondary">
                         <i class="bi bi-info-circle"></i>
                         <strong>Admin Controls:</strong> You can adjust K-Value (2,3,5,10,15,20 - only higher values) and Time Window (5s,10s,15s,20s,30s) for patients <strong>only when Remote Anonymization is enabled by the patient</strong>.
                         Select new values from the dropdowns and click <strong>Apply</strong> to send via MQTT.
@@ -74,7 +74,7 @@
                             <tbody id="patients-table-body">
                                 <tr>
                                     <td colspan="8" class="text-center">
-                                        <div class="spinner-border text-primary" role="status">
+                                        <div class="spinner-border text-secondary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
                                     </td>
@@ -168,12 +168,12 @@ function createPatientRow(patient) {
 
     // Remote anon status badge (read-only - user controls this from Flutter app)
     const remoteAnonBadge = patient.remote_anon_enabled
-        ? '<span class="badge bg-success">Enabled</span>'
+        ? '<span class="badge bg-dark">Enabled</span>'
         : '<span class="badge bg-secondary">Disabled</span>';
 
     // Auto anon icon
     const autoAnonIcon = patient.auto_anonymize
-        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+        ? '<i class="bi bi-check-circle-fill text-dark"></i>'
         : '<i class="bi bi-x-circle-fill text-secondary"></i>';
 
     // K-value dropdown (only allow higher values) - Updated: 2, 3, 5, 10, 15, 20
@@ -216,7 +216,7 @@ function createPatientRow(patient) {
         <td class="text-center">${autoAnonIcon}</td>
         <td>${remoteAnonBadge}</td>
         <td>
-            <button class="btn btn-sm btn-success"
+            <button class="btn btn-sm btn-dark"
                     id="apply-btn-${patient.unique_key}"
                     onclick="applyChanges('${patient.unique_key}')"
                     disabled
