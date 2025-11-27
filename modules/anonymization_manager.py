@@ -93,6 +93,13 @@ class AnonymizationManager:
         patient_name = f"{given_name} {family_name}"
 
         try:
+            # Log inputs for debugging
+            logger.info(f"[Patient Verification] Inputs:")
+            logger.info(f"   Given Name: '{given_name}'")
+            logger.info(f"   Family Name: '{family_name}'")
+            logger.info(f"   Date of Birth: '{dob}'")
+            logger.info(f"   Gender: '{gender}'")
+
             # Generate unique key from patient info
             unique_key = self.record_linkage.generate_unique_key(
                 given_name=given_name,
@@ -102,6 +109,7 @@ class AnonymizationManager:
             )
 
             logger.info(f"Generated unique key for {given_name} {family_name}: {unique_key[:16]}...")
+            logger.info(f"   Full unique key: {unique_key}")
 
             # Try to import InfluxDB fetcher to check data availability
             try:
@@ -374,7 +382,7 @@ Completed:           {job.get('completed_at', 'N/A')}
             if job.get('start_time'):
                 cmd.extend(['--start-time', job['start_time']])
             if job.get('end_time'):
-                cmd.extend(['--end_time', job['end_time']])
+                cmd.extend(['--end-time', job['end_time']])
 
             # Set output format
             if job.get('output_format'):

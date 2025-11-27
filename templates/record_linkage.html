@@ -5,8 +5,7 @@
 
 <div class="alert alert-secondary">
     <i class="bi bi-info-circle"></i>
-    <strong>Privacy-Preserving Record Linkage:</strong> Enter patient's personal identifiers (name, DoB, gender).
-    The system will hash them using SHA256 to generate unique_key and fetch data from InfluxDB and PostgreSQL.
+    <strong>Privacy-Preserving Record Linkage:</strong> Enter patient's personal information OR their unique key to fetch data from InfluxDB and PostgreSQL.
 </div>
 
 <!-- Patient Data Fetch Form -->
@@ -15,7 +14,24 @@
         <i class="bi bi-person-badge"></i> Patient Information
     </div>
     <div class="card-body">
-        <form id="recordLinkageForm">
+        <!-- Mode Selection -->
+        <div class="mb-4">
+            <label class="form-label"><strong>Search Method:</strong></label>
+            <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="search-mode" id="mode-personal-info" value="personal-info" checked>
+                <label class="btn btn-outline-dark" for="mode-personal-info">
+                    <i class="bi bi-person-badge"></i> Search by Personal Information
+                </label>
+
+                <input type="radio" class="btn-check" name="search-mode" id="mode-unique-key-search" value="unique-key">
+                <label class="btn btn-outline-dark" for="mode-unique-key-search">
+                    <i class="bi bi-key"></i> Search by Unique Key
+                </label>
+            </div>
+        </div>
+
+        <!-- Mode A: Personal Information Form -->
+        <form id="recordLinkageForm" style="display: block;">
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label for="given_name" class="form-label">Given Name <span class="text-danger">*</span></label>
@@ -78,6 +94,63 @@
                 <div class="col-md-4">
                     <label for="limit" class="form-label">Data Limit</label>
                     <input type="number" class="form-control" id="limit" name="limit" value="1000" min="1" max="10000">
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-dark btn-lg">
+                    <i class="bi bi-search"></i> Fetch Patient Data
+                </button>
+            </div>
+        </form>
+
+        <!-- Mode B: Unique Key Form -->
+        <form id="uniqueKeySearchForm" style="display: none;">
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label for="unique_key_search" class="form-label">Unique Key <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control font-monospace" id="unique_key_search" name="unique_key"
+                           placeholder="0000000000000000000008008000000000000000000000000000000100000000"
+                           pattern="[0-9a-fA-F]{64}"
+                           minlength="64"
+                           maxlength="64"
+                           required>
+                    <small class="text-muted">Paste the 64-character hexadecimal unique key</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="start_time_uk" class="form-label">Start Time (Optional)</label>
+                    <input type="datetime-local" class="form-control" id="start_time_uk" name="start_time">
+                    <small class="text-muted">Leave empty for last 24 hours</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="end_time_uk" class="form-label">End Time (Optional)</label>
+                    <input type="datetime-local" class="form-control" id="end_time_uk" name="end_time">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include_raw_uk" checked>
+                        <label class="form-check-label" for="include_raw_uk">
+                            Include Raw Sensor Data
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include_anonymized_uk" checked>
+                        <label class="form-check-label" for="include_anonymized_uk">
+                            Include Anonymized Data
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="limit_uk" class="form-label">Data Limit</label>
+                    <input type="number" class="form-control" id="limit_uk" name="limit" value="1000" min="1" max="10000">
                 </div>
             </div>
 
@@ -246,7 +319,23 @@
 <script>
 let currentPatientData = null;
 
-// Form submission
+// Mode switching
+document.querySelectorAll('input[name="search-mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const personalInfoForm = document.getElementById('recordLinkageForm');
+        const uniqueKeyForm = document.getElementById('uniqueKeySearchForm');
+
+        if (this.value === 'personal-info') {
+            personalInfoForm.style.display = 'block';
+            uniqueKeyForm.style.display = 'none';
+        } else {
+            personalInfoForm.style.display = 'none';
+            uniqueKeyForm.style.display = 'block';
+        }
+    });
+});
+
+// Personal Information Form submission
 document.getElementById('recordLinkageForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -270,6 +359,55 @@ document.getElementById('recordLinkageForm').addEventListener('submit', async fu
     try {
         // Fetch patient data
         const response = await fetch('/api/record-linkage/fetch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentPatientData = result.data;
+            displayResults(result.data);
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to fetch patient data: ' + error.message);
+    } finally {
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+});
+
+// Unique Key Form submission
+document.getElementById('uniqueKeySearchForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const uniqueKey = document.getElementById('unique_key_search').value.trim().toLowerCase();
+
+    // Validate unique key format
+    if (!/^[0-9a-f]{64}$/.test(uniqueKey)) {
+        alert('Invalid unique key format. Must be exactly 64 hexadecimal characters.');
+        return;
+    }
+
+    // Show loading
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Get form data
+    const formData = {
+        unique_key: uniqueKey,
+        start_time: document.getElementById('start_time_uk').value || null,
+        end_time: document.getElementById('end_time_uk').value || null,
+        include_raw: document.getElementById('include_raw_uk').checked,
+        include_anonymized: document.getElementById('include_anonymized_uk').checked,
+        limit: parseInt(document.getElementById('limit_uk').value)
+    };
+
+    try {
+        // Fetch patient data by unique key
+        const response = await fetch('/api/record-linkage/fetch-by-key', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(formData)

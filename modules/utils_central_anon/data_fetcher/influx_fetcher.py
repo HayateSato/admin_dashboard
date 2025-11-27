@@ -239,6 +239,8 @@ from(bucket: "{bucket}")
   |> sort(columns: ["_time"], desc: true)
 '''
 
+        logger.info(f"   Full unique_key being queried: {unique_key}")
+        logger.info(f"   Unique key length: {len(unique_key)} characters")
         logger.debug(f"   Flux query:\n{query}")
 
         try:

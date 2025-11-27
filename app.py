@@ -1020,6 +1020,55 @@ def fetch_patient_data():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 
+@app.route('/api/record-linkage/fetch-by-key', methods=['POST'])
+@login_required
+def fetch_patient_data_by_key():
+    """Fetch patient data by unique key directly"""
+    data = request.json
+    unique_key = data.get('unique_key')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    include_raw = data.get('include_raw', True)
+    include_anonymized = data.get('include_anonymized', True)
+    limit = int(data.get('limit', 1000))
+
+    if not unique_key:
+        return jsonify({'success': False, 'error': 'Unique key is required'}), 400
+
+    # Validate unique key format
+    if not isinstance(unique_key, str) or len(unique_key) != 64:
+        return jsonify({'success': False, 'error': 'Invalid unique key format (must be 64 hex characters)'}), 400
+
+    try:
+        # Fetch data using the unique key directly
+        patient_data = record_linkage.link_patient_data_by_key(
+            unique_key=unique_key,
+            start_time=start_time,
+            end_time=end_time,
+            include_raw=include_raw,
+            include_anonymized=include_anonymized,
+            limit=limit
+        )
+
+        # Log audit event
+        audit_logger.log_event(
+            user_id=session.get('user_id'),
+            event_type='record_linkage',
+            description=f"Fetched data for unique_key: {unique_key[:16]}...",
+            ip_address=request.remote_addr,
+            metadata={
+                'unique_key': unique_key,
+                'total_data_points': patient_data['summary']['total_data_points']
+            }
+        )
+
+        return jsonify({'success': True, 'data': patient_data})
+
+    except Exception as e:
+        logger.error(f"Record linkage by key failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
 @app.route('/api/record-linkage/export-csv', methods=['POST'])
 @login_required
 def export_patient_data_csv():

@@ -10,73 +10,12 @@
         <h5 class="mb-0"><i class="bi bi-person-check"></i> Step 1: Patient Verification</h5>
     </div>
     <div class="card-body">
-        <!-- Mode Selection -->
-        <div class="mb-4">
-            <label class="form-label"><strong>Do you know the patient's personal information?</strong></label>
-            <div class="btn-group w-100" role="group">
-                <input type="radio" class="btn-check" name="verification-mode" id="mode-patient-info" value="patient-info" checked>
-                <label class="btn btn-outline-dark" for="mode-patient-info">
-                    <i class="bi bi-person-badge"></i> Yes - I know their name and details
-                </label>
-
-                <input type="radio" class="btn-check" name="verification-mode" id="mode-unique-key" value="unique-key">
-                <label class="btn btn-outline-dark" for="mode-unique-key">
-                    <i class="bi bi-key"></i> No - I only have their unique key
-                </label>
-            </div>
+        <div class="alert alert-secondary">
+            <i class="bi bi-info-circle"></i> Enter the patient's unique key to verify and anonymize their data.
         </div>
 
-        <!-- Mode A: Patient Information Form -->
-        <form id="patient-verification-form" style="display: block;">
-            <div class="alert alert-secondary">
-                <i class="bi bi-info-circle"></i> Enter the patient's personal information to generate and verify their unique key.
-            </div>
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="mb-3">
-                        <label class="form-label">Given Name *</label>
-                        <input type="text" class="form-control" id="given-name" placeholder="John" required>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="mb-3">
-                        <label class="form-label">Family Name *</label>
-                        <input type="text" class="form-control" id="family-name" placeholder="Doe" required>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="mb-3">
-                        <label class="form-label">Date of Birth *</label>
-                        <input type="date" class="form-control" id="dob" required>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="mb-3">
-                        <label class="form-label">Gender *</label>
-                        <select class="form-control" id="gender" required>
-                            <option value="">Select...</option>
-                            <option value="m">Male</option>
-                            <option value="f">Female</option>
-                            <option value="f">Other</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-1">
-                    <div class="mb-3">
-                        <label class="form-label">&nbsp;</label>
-                        <button type="submit" class="btn btn-dark w-100">
-                            <i class="bi bi-search"></i> Verify
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
-
-        <!-- Mode B: Unique Key Form -->
-        <form id="unique-key-verification-form" style="display: none;">
-            <div class="alert alert-secondary">
-                <i class="bi bi-key"></i> Enter the patient's unique key directly to verify and anonymize their data.
-            </div>
+        <!-- Unique Key Form -->
+        <form id="unique-key-verification-form">
             <div class="row">
                 <div class="col-md-11">
                     <div class="mb-3">
@@ -275,157 +214,7 @@
 // Global state
 let verifiedPatient = null;
 
-// Mode switching
-document.querySelectorAll('input[name="verification-mode"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        const patientInfoForm = document.getElementById('patient-verification-form');
-        const uniqueKeyForm = document.getElementById('unique-key-verification-form');
-        const verificationResults = document.getElementById('verification-results');
-
-        if (this.value === 'patient-info') {
-            patientInfoForm.style.display = 'block';
-            uniqueKeyForm.style.display = 'none';
-        } else {
-            patientInfoForm.style.display = 'none';
-            uniqueKeyForm.style.display = 'block';
-        }
-
-        // Hide verification results when switching modes
-        if (verificationResults) {
-            verificationResults.style.display = 'none';
-        }
-        verifiedPatient = null;
-    });
-});
-
-// Step 1: Patient Verification (Mode A - Patient Information)
-document.getElementById('patient-verification-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const givenName = document.getElementById('given-name').value;
-    const familyName = document.getElementById('family-name').value;
-    const dob = document.getElementById('dob').value;
-    const gender = document.getElementById('gender').value;
-
-    try {
-        const response = await fetch('/api/anonymization/verify-patient', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                given_name: givenName,
-                family_name: familyName,
-                dob: dob,
-                gender: gender
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            const result = data.result;
-            verifiedPatient = result;
-
-            // Show results
-            document.getElementById('verification-results').style.display = 'block';
-
-            if (result.exists === true) {
-                // Patient found
-                const uniqueKeyDisplay = result.unique_key ? `<p class="mb-0 small">Unique Key: <code>${result.unique_key.substring(0, 32)}...</code></p>` : '';
-                const verificationMsg = document.getElementById('verification-message');
-                if (verificationMsg) {
-                    verificationMsg.innerHTML = `
-                        <p class="mb-2"><strong>✓ Patient Found!</strong></p>
-                        <p class="mb-0">Patient: <strong>${result.patient_name || 'Unknown'}</strong></p>
-                        <p class="mb-0">Total Records: <strong>${result.total_records || 0}</strong> date(s)</p>
-                        ${uniqueKeyDisplay}
-                    `;
-                }
-
-                // Show available dates
-                const datesSection = document.getElementById('available-dates-section');
-                if (datesSection) {
-                    datesSection.style.display = 'block';
-                }
-
-                const datesTable = document.getElementById('available-dates-table');
-                if (datesTable && result.available_dates && Array.isArray(result.available_dates)) {
-                    datesTable.innerHTML = '';
-                    result.available_dates.forEach((dateStr, index) => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${dateStr}</td>
-                            <td><span class="badge bg-secondary">Available</span></td>
-                        `;
-                        datesTable.appendChild(row);
-                    });
-                }
-            } else if (result.exists === false) {
-                // Patient not found
-                const uniqueKeyDisplay = result.unique_key ?
-                    `<p class="mb-0 small mt-2">Generated Unique Key: <code>${result.unique_key.substring(0, 32)}...</code></p>` :
-                    '';
-                const verificationMsg = document.getElementById('verification-message');
-                if (verificationMsg) {
-                    verificationMsg.innerHTML = `
-                        <p class="mb-2"><strong>✗ Patient Not Found</strong></p>
-                        <p class="mb-0">${result.message || 'No data found for this patient in InfluxDB'}</p>
-                        ${uniqueKeyDisplay}
-                        ${result.error ? `<p class="mb-0 small text-danger mt-2">Error: ${result.error}</p>` : ''}
-                    `;
-                }
-                const datesSection = document.getElementById('available-dates-section');
-                if (datesSection) {
-                    datesSection.style.display = 'none';
-                }
-            } else {
-                // Unknown (InfluxDB unavailable)
-                const uniqueKeyDisplay = result.unique_key ?
-                    `<p class="mb-0 small mt-2">Generated Unique Key: <code>${result.unique_key.substring(0, 32)}...</code></p>` :
-                    '';
-                const proceedButton = result.unique_key ?
-                    '<button class="btn btn-warning btn-sm mt-2" onclick="proceedToStep2()">Proceed Anyway</button>' :
-                    '';
-                const verificationMsg = document.getElementById('verification-message');
-                if (verificationMsg) {
-                    verificationMsg.innerHTML = `
-                        <p class="mb-2"><strong>⚠ Verification Unavailable</strong></p>
-                        <p class="mb-0">${result.message}</p>
-                        ${uniqueKeyDisplay}
-                        ${proceedButton}
-                    `;
-                }
-                const datesSection = document.getElementById('available-dates-section');
-                if (datesSection) {
-                    datesSection.style.display = 'none';
-                }
-            }
-        } else {
-            alert('Error: ' + (data.error || 'Failed to verify patient'));
-        }
-    } catch (error) {
-        console.error('Error verifying patient:', error);
-
-        // Show error in verification section
-        const verificationResults = document.getElementById('verification-results');
-        if (verificationResults) {
-            verificationResults.style.display = 'block';
-        }
-
-        const verificationMessage = document.getElementById('verification-message');
-        if (verificationMessage) {
-            verificationMessage.innerHTML = `
-                <p class="mb-2"><strong>✗ Verification Error</strong></p>
-                <p class="mb-0 text-danger">Failed to verify patient: ${error.message || error}</p>
-                <p class="mb-0 small mt-2">Please check the console for more details.</p>
-            `;
-        } else {
-            // Fallback to alert if element not found
-            alert('Failed to verify patient: ' + error);
-        }
-    }
-});
-
-// Step 1: Unique Key Verification (Mode B - Direct Unique Key)
+// Step 1: Unique Key Verification
 document.getElementById('unique-key-verification-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -627,7 +416,13 @@ document.getElementById('anonymization-form').addEventListener('submit', async f
             // Reset form and go back to step 1
             document.getElementById('anonymization-form').reset();
             backToStep1();
-            document.getElementById('patient-verification-form').reset();
+
+            // Reset unique key form (not patient-verification-form which was removed)
+            const uniqueKeyForm = document.getElementById('unique-key-verification-form');
+            if (uniqueKeyForm) {
+                uniqueKeyForm.reset();
+            }
+
             document.getElementById('verification-results').style.display = 'none';
             verifiedPatient = null;
 

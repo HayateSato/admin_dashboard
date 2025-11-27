@@ -1,0 +1,40 @@
+I/flutter ( 4029): FL Client: Local model evaluation completed (Round 3)
+I/flutter ( 4029): FL Client: Local metrics - EvaluationMetrics(accuracy: 62.5%, f1: 0.0%, auc: 0.500)
+I/flutter ( 4029): FL Client: Metrics evaluated on validation data (40 samples)
+I/flutter ( 4029): FL Client: Applying Differential Privacy (High Privacy)...
+I/flutter ( 4029): DP: Applying differential privacy...
+I/flutter ( 4029): DP: Privacy budget (ε=0.10, δ=1.0e-5)
+I/flutter ( 4029): DP: Sensitivity=1.00
+I/flutter ( 4029): DP: Added noise to 8 feature importance values
+I/flutter ( 4029): DP: Added noise to 0 leaf weights across 1 trees
+I/flutter ( 4029): DP: Privacy-preserving model ready for transmission
+I/flutter ( 4029): ========================================
+I/flutter ( 4029): DIFFERENTIAL PRIVACY NOISE REPORT
+I/flutter ( 4029): ========================================
+I/flutter ( 4029):
+I/flutter ( 4029): FEATURE IMPORTANCE (8 features):
+I/flutter ( 4029):   Avg noise magnitude: 4.009286
+I/flutter ( 4029):   Max noise magnitude: 31.199289
+I/flutter ( 4029):   Avg relative change: 3207.43%
+I/flutter ( 4029):
+I/flutter ( 4029):   Top 5 affected features:
+I/flutter ( 4029):     acc_z: 0.125000 → 31.324289 (+31.199289)
+I/flutter ( 4029):     hr: 0.125000 → 0.000000 (-0.125000)
+I/flutter ( 4029):     spo2: 0.125000 → 0.000000 (-0.125000)
+I/flutter ( 4029):     green: 0.125000 → 0.000000 (-0.125000)
+I/flutter ( 4029):     red: 0.125000 → 0.000000 (-0.125000)
+I/flutter ( 4029):
+I/flutter ( 4029): LEAF WEIGHTS (0 leaves across 0 trees):
+I/flutter ( 4029):   Avg noise magnitude: 0.000000
+I/flutter ( 4029):   Max noise magnitude: 0.000000
+I/flutter ( 4029):   Avg relative change: 0.00%
+I/flutter ( 4029):
+I/flutter ( 4029):   Per-tree leaf count:
+I/flutter ( 4029):
+I/flutter ( 4029): BASE PREDICTION:
+I/flutter ( 4029):   Original: 0.000000
+I/flutter ( 4029):   Noisy:    4.861728
+I/flutter ( 4029):   Noise:    +4.861728
+I/flutter ( 4029):
+I/flutter ( 4029): ========================================
+I/flutter ( 4029):

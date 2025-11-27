@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\Users\\HayateSato\\AndroidStudioProjects\\Demonstrator\\mcs-smart-data_c\\lib\\src\\federated_learning\" /B)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

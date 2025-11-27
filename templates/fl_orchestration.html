@@ -84,7 +84,10 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="bi bi-phone"></i> Connected Clients</h5>
+                <h5 class="mb-0">
+                    <i class="bi bi-phone"></i> Connected Clients
+                    <span id="clients-header-count" class="badge bg-secondary ms-2">0 / 0</span>
+                </h5>
             </div>
             <div class="card-body">
                 <div id="clients-list">
@@ -307,9 +310,16 @@ async function refreshServerStatus() {
             if (details.running) {
                 document.getElementById('server-session-id').innerHTML =
                     `<code class="small">${details.session_id.substring(0, 15)}...</code>`;
+
+                // Show connected vs expected clients with color coding
+                const connectedCount = details.connected_clients_count || 0;
+                const expectedCount = details.expected_clients || 0;
+                const allConnected = connectedCount >= expectedCount && expectedCount > 0;
+                const badgeClass = allConnected ? 'bg-dark' : 'bg-secondary';
+
                 document.getElementById('connected-count').innerHTML =
-                    `<span class="badge bg-secondary">${details.connected_clients_count}</span>`;
-                document.getElementById('expected-count').textContent = details.expected_clients;
+                    `<span class="badge ${badgeClass}">${connectedCount}</span>`;
+                document.getElementById('expected-count').textContent = expectedCount;
 
                 if (details.server_start_time) {
                     const startTime = new Date(details.server_start_time);
@@ -341,6 +351,20 @@ async function refreshClients() {
         const clients = await response.json();
 
         const clientsList = document.getElementById('clients-list');
+        const clientsHeaderCount = document.getElementById('clients-header-count');
+
+        // Get expected clients count from the input field
+        const expectedClientsInput = document.getElementById('expected-clients-input');
+        const expectedCount = expectedClientsInput ? parseInt(expectedClientsInput.value) : 0;
+        const connectedCount = clients.length;
+
+        // Update header badge
+        const allConnected = connectedCount >= expectedCount && expectedCount > 0;
+        const badgeClass = allConnected ? 'bg-dark' : 'bg-secondary';
+        if (clientsHeaderCount) {
+            clientsHeaderCount.className = `badge ${badgeClass} ms-2`;
+            clientsHeaderCount.textContent = `${connectedCount} / ${expectedCount}`;
+        }
 
         if (clients.length === 0) {
             clientsList.innerHTML = '<p class="text-muted">No clients connected</p>';
@@ -468,7 +492,18 @@ async function refreshGlobalModel() {
         const modelInfo = document.getElementById('global-model-info');
 
         if (model.error) {
-            modelInfo.innerHTML = `<p class="text-muted">${model.error}</p>`;
+            // Check if it's a "not found" error vs other errors
+            const isNotFound = model.error.toLowerCase().includes('not found');
+            if (isNotFound) {
+                modelInfo.innerHTML = `
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-info-circle"></i> No global model available yet.
+                        <p class="mb-0 mt-2 small">The global model will be created after the first FL training round is completed.</p>
+                    </div>
+                `;
+            } else {
+                modelInfo.innerHTML = `<p class="text-danger">Error: ${model.error}</p>`;
+            }
             return;
         }
 

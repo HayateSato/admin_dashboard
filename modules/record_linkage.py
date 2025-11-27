@@ -47,6 +47,9 @@ class RecordLinkage:
         # Concatenate with pipe separator (MUST match Flutter format)
         user_data = f"{normalized_given_name}|{normalized_family_name}|{normalized_dob}|{normalized_gender}"
 
+        logger.info(f"[Bloom Filter] Generating unique key")
+        logger.info(f"   Input string for hashing: '{user_data}'")
+
         # Generate bloom filter
         filter_size = 256  # bits
         num_hash_functions = 3
@@ -381,6 +384,69 @@ class RecordLinkage:
         }
 
         logger.info(f"Record linkage complete for {given_name} {family_name}: "
+                   f"{result['summary']['total_data_points']} total data points")
+
+        return result
+
+    def link_patient_data_by_key(self, unique_key: str,
+                                 start_time: Optional[str] = None, end_time: Optional[str] = None,
+                                 include_raw: bool = True, include_anonymized: bool = True,
+                                 limit: int = 1000) -> Dict:
+        """
+        Complete record linkage using unique_key directly
+
+        Args:
+            unique_key: Patient's unique key (64 hex characters)
+            start_time: Start time for sensor data
+            end_time: End time for sensor data
+            include_raw: Include raw sensor data
+            include_anonymized: Include anonymized sensor data
+            limit: Max records per data source
+
+        Returns:
+            Complete patient data package
+        """
+        # Fetch metadata
+        metadata = self.fetch_patient_metadata(unique_key)
+
+        # Fetch sensor data
+        raw_data = []
+        if include_raw:
+            raw_data = self.fetch_patient_sensor_data(unique_key, start_time, end_time, limit)
+
+        # Fetch anonymized data
+        anonymized_data = []
+        if include_anonymized:
+            anonymized_data = self.fetch_patient_anonymized_data(unique_key, start_time, end_time, limit)
+
+        # Compile complete record
+        result = {
+            'query_info': {
+                'given_name': 'Unknown',
+                'family_name': '(Searched by unique key)',
+                'dob': 'N/A',
+                'gender': 'N/A',
+                'unique_key': unique_key,
+                'timestamp': datetime.now().isoformat()
+            },
+            'metadata': metadata,
+            'raw_sensor_data': {
+                'count': len(raw_data),
+                'data': raw_data
+            },
+            'anonymized_data': {
+                'count': len(anonymized_data),
+                'data': anonymized_data
+            },
+            'summary': {
+                'metadata_found': metadata is not None,
+                'raw_data_points': len(raw_data),
+                'anonymized_data_points': len(anonymized_data),
+                'total_data_points': len(raw_data) + len(anonymized_data)
+            }
+        }
+
+        logger.info(f"Record linkage complete for unique_key {unique_key[:16]}...: "
                    f"{result['summary']['total_data_points']} total data points")
 
         return result
