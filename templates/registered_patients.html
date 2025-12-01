@@ -26,7 +26,7 @@
         <div class="col-md-6">
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" id="search-input" placeholder="Search by unique key or device ID...">
+                <input type="text" class="form-control" id="search-input" placeholder="Search by unique key...">
             </div>
         </div>
         <div class="col-md-3">
@@ -62,7 +62,6 @@
                             <thead>
                                 <tr>
                                     <th>Unique Key</th>
-                                    <th>Device ID</th>
                                     <th>Last Session</th>
                                     <th>K-Value</th>
                                     <th>Time Window</th>
@@ -73,7 +72,7 @@
                             </thead>
                             <tbody id="patients-table-body">
                                 <tr>
-                                    <td colspan="8" class="text-center">
+                                    <td colspan="7" class="text-center">
                                         <div class="spinner-border text-secondary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
@@ -148,7 +147,7 @@ function displayPatients(patientList) {
     tbody.innerHTML = '';
 
     if (patientList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No patients found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No patients found</td></tr>';
         return;
     }
 
@@ -199,7 +198,6 @@ function createPatientRow(patient) {
                 <i class="bi bi-clipboard"></i>
             </button>
         </td>
-        <td>${patient.device_id}</td>
         <td><small>${lastSession}</small></td>
         <td>
             <select class="form-select form-select-sm" style="width: 80px;"
@@ -307,8 +305,7 @@ function filterPatients() {
     // Apply search filter
     if (searchTerm) {
         filtered = filtered.filter(p =>
-            p.unique_key.toLowerCase().includes(searchTerm) ||
-            p.device_id.toLowerCase().includes(searchTerm)
+            p.unique_key.toLowerCase().includes(searchTerm)
         );
     }
 

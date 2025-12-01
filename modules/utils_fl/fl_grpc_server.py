@@ -3,6 +3,7 @@ from concurrent import futures
 import threading
 import time
 import json
+import os
 import argparse
 from grpc_utils import federated_learning_pb2_grpc
 from grpc_utils import federated_learning_pb2
@@ -15,7 +16,11 @@ logger = setup_logger(__name__)
 class FederatedLearningServicer(federated_learning_pb2_grpc.FederatedLearningServiceServicer):
     def __init__(self, expected_clients=3):
         self.aggregator = XGBoostAggregator()
-        self.model_manager = GlobalModelManager()
+
+        # Get model save path from environment variable
+        model_save_path = os.getenv('MODEL_SAVE_PATH', 'global_model_latest.json')
+        logger.info(f"Using model save path: {model_save_path}")
+        self.model_manager = GlobalModelManager(model_save_path=model_save_path)
         self.connected_clients = {}
         self.client_weights = {}
         self.client_metrics = {}
@@ -296,12 +301,17 @@ class FederatedLearningServicer(federated_learning_pb2_grpc.FederatedLearningSer
                 time.sleep(1)
             
             logger.info(f"Proceeding with aggregation using {len(self.client_weights)} clients...")
-            
+
             # Aggregate weights
             with self.lock:
                 client_weights_list = list(self.client_weights.values())
                 global_weights = self.aggregator.aggregate_weights_bagging(client_weights_list)
-            
+
+                # Update aggregation stats
+                self.aggregations_completed += 1
+                self.last_aggregation_time = time.time()
+                logger.info(f"Aggregation completed (total: {self.aggregations_completed})")
+
             if global_weights is None:
                 logger.error(f"Failed to aggregate weights for {client_id}")
                 return federated_learning_pb2.GlobalModelResponse(

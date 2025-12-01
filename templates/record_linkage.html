@@ -204,7 +204,10 @@
                     <div class="card bg-light">
                         <div class="card-body">
                             <h5 class="text-primary" id="total_data_points">0</h5>
-                            <small>Total Data Points</small>
+                            <small>Total ECG Data Points Fetched</small>
+                            <div class="mt-2 text-muted" style="font-size: 0.85em;">
+                                <i class="bi bi-info-circle"></i> Limited to 1000 points
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -212,7 +215,10 @@
                     <div class="card bg-light">
                         <div class="card-body">
                             <h5 class="text-info" id="raw_data_points">0</h5>
-                            <small>Raw Sensor Data</small>
+                            <small>Raw ECG Data Points</small>
+                            <div class="mt-2 text-muted" style="font-size: 0.85em;">
+                                <span id="raw_data_total">0</span> total fetched
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -220,7 +226,10 @@
                     <div class="card bg-light">
                         <div class="card-body">
                             <h5 class="text-success" id="anon_data_points">0</h5>
-                            <small>Anonymized Data</small>
+                            <small>Anonymized ECG Data</small>
+                            <div class="mt-2 text-muted" style="font-size: 0.85em;">
+                                <span id="anon_data_total">0</span> total fetched
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -430,67 +439,100 @@ document.getElementById('uniqueKeySearchForm').addEventListener('submit', async 
 
 // Display results
 function displayResults(data) {
-    // Query info
-    document.getElementById('result_name').textContent =
-        `${data.query_info.given_name} ${data.query_info.family_name}`;
-    document.getElementById('result_dob').textContent = data.query_info.dob;
-    document.getElementById('result_gender').textContent = data.query_info.gender;
-    document.getElementById('result_unique_key').textContent = data.query_info.unique_key;
-    document.getElementById('result_timestamp').textContent = new Date(data.query_info.timestamp).toLocaleString();
+    console.log('Displaying results:', data);
 
-    // Summary
-    document.getElementById('total_data_points').textContent = data.summary.total_data_points;
-    document.getElementById('raw_data_points').textContent = data.summary.raw_data_points;
-    document.getElementById('anon_data_points').textContent = data.summary.anonymized_data_points;
+    // Show results section first
+    document.getElementById('resultsSection').style.display = 'block';
 
-    // Metadata status
-    const metadataIcon = data.summary.metadata_found
-        ? '<i class="bi bi-check-circle text-success"></i>'
-        : '<i class="bi bi-x-circle text-danger"></i>';
-    document.getElementById('metadata_status').innerHTML = metadataIcon;
+    // Query info - with null checks
+    const resultName = document.getElementById('result_name');
+    const resultDob = document.getElementById('result_dob');
+    const resultGender = document.getElementById('result_gender');
+    const resultUniqueKey = document.getElementById('result_unique_key');
+    const resultTimestamp = document.getElementById('result_timestamp');
+
+    if (resultName) resultName.textContent = `${data.query_info.given_name} ${data.query_info.family_name}`;
+    if (resultDob) resultDob.textContent = data.query_info.dob;
+    if (resultGender) resultGender.textContent = data.query_info.gender;
+    if (resultUniqueKey) resultUniqueKey.textContent = data.query_info.unique_key;
+    if (resultTimestamp) resultTimestamp.textContent = new Date(data.query_info.timestamp).toLocaleString();
+
+    // Summary - displayed counts with null checks
+    const totalDataPoints = document.getElementById('total_data_points');
+    const rawDataPoints = document.getElementById('raw_data_points');
+    const anonDataPoints = document.getElementById('anon_data_points');
+
+    if (totalDataPoints) totalDataPoints.textContent = data.summary.total_data_points;
+    if (rawDataPoints) rawDataPoints.textContent = data.summary.raw_data_points;
+    if (anonDataPoints) anonDataPoints.textContent = data.summary.anonymized_data_points;
+
+    // Summary - total counts in database with null checks
+    const totalDataInDb = document.getElementById('total_data_in_db');
+    const rawDataTotal = document.getElementById('raw_data_total');
+    const anonDataTotal = document.getElementById('anon_data_total');
+
+    if (totalDataInDb) totalDataInDb.textContent = data.summary.total_data_in_db || data.summary.total_data_points;
+    if (rawDataTotal) rawDataTotal.textContent = data.summary.raw_data_total || data.summary.raw_data_points;
+    if (anonDataTotal) anonDataTotal.textContent = data.summary.anonymized_data_total || data.summary.anonymized_data_points;
+
+    // Metadata status with null check
+    const metadataStatus = document.getElementById('metadata_status');
+    if (metadataStatus) {
+        const metadataIcon = data.summary.metadata_found
+            ? '<i class="bi bi-check-circle text-success"></i>'
+            : '<i class="bi bi-x-circle text-danger"></i>';
+        metadataStatus.innerHTML = metadataIcon;
+    }
 
     // Metadata
     if (data.metadata) {
-        document.getElementById('metadataCard').style.display = 'block';
-        document.getElementById('metadata_content').textContent = JSON.stringify(data.metadata, null, 2);
+        const metadataCard = document.getElementById('metadataCard');
+        const metadataContent = document.getElementById('metadata_content');
+        if (metadataCard) metadataCard.style.display = 'block';
+        if (metadataContent) metadataContent.textContent = JSON.stringify(data.metadata, null, 2);
     }
 
     // Raw data table
     if (data.raw_sensor_data.count > 0) {
-        document.getElementById('rawDataCard').style.display = 'block';
+        const rawDataCard = document.getElementById('rawDataCard');
         const tbody = document.getElementById('rawDataTable');
-        tbody.innerHTML = '';
-        data.raw_sensor_data.data.forEach(point => {
-            const row = `<tr>
-                <td>${new Date(point.timestamp).toLocaleString()}</td>
-                <td>${point.measurement}</td>
-                <td>${point.field}</td>
-                <td>${point.value}</td>
-            </tr>`;
-            tbody.innerHTML += row;
-        });
+        if (rawDataCard && tbody) {
+            rawDataCard.style.display = 'block';
+            tbody.innerHTML = '';
+            data.raw_sensor_data.data.forEach(point => {
+                const row = `<tr>
+                    <td>${new Date(point.timestamp).toLocaleString()}</td>
+                    <td>${point.measurement}</td>
+                    <td>${point.field}</td>
+                    <td>${point.value}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
     }
 
     // Anonymized data table
     if (data.anonymized_data.count > 0) {
-        document.getElementById('anonDataCard').style.display = 'block';
+        const anonDataCard = document.getElementById('anonDataCard');
         const tbody = document.getElementById('anonDataTable');
-        tbody.innerHTML = '';
-        data.anonymized_data.data.forEach(point => {
-            const row = `<tr>
-                <td>${new Date(point.timestamp).toLocaleString()}</td>
-                <td>${point.measurement}</td>
-                <td>${point.field}</td>
-                <td>${point.value}</td>
-                <td>${point.k_value || 'N/A'}</td>
-                <td>${point.time_window || 'N/A'}</td>
-            </tr>`;
-            tbody.innerHTML += row;
-        });
+        if (anonDataCard && tbody) {
+            anonDataCard.style.display = 'block';
+            tbody.innerHTML = '';
+            data.anonymized_data.data.forEach(point => {
+                const row = `<tr>
+                    <td>${new Date(point.timestamp).toLocaleString()}</td>
+                    <td>${point.measurement}</td>
+                    <td>${point.field}</td>
+                    <td>${point.value}</td>
+                    <td>${point.k_value || 'N/A'}</td>
+                    <td>${point.time_window || 'N/A'}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
     }
 
-    // Show results
-    document.getElementById('resultsSection').style.display = 'block';
+    console.log('Results displayed successfully');
 }
 
 // Export to CSV

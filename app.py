@@ -1031,6 +1031,7 @@ def fetch_patient_data_by_key():
     include_raw = data.get('include_raw', True)
     include_anonymized = data.get('include_anonymized', True)
     limit = int(data.get('limit', 1000))
+    skip_count = data.get('skip_count', True)  # Skip count queries by default for faster response
 
     if not unique_key:
         return jsonify({'success': False, 'error': 'Unique key is required'}), 400
@@ -1040,6 +1041,10 @@ def fetch_patient_data_by_key():
         return jsonify({'success': False, 'error': 'Invalid unique key format (must be 64 hex characters)'}), 400
 
     try:
+        logger.info(f"Record linkage request for unique_key: {unique_key[:16]}...")
+        logger.info(f"   Time window: {start_time} to {end_time}")
+        logger.info(f"   Limit: {limit}, Skip count: {skip_count}")
+
         # Fetch data using the unique key directly
         patient_data = record_linkage.link_patient_data_by_key(
             unique_key=unique_key,
@@ -1047,7 +1052,8 @@ def fetch_patient_data_by_key():
             end_time=end_time,
             include_raw=include_raw,
             include_anonymized=include_anonymized,
-            limit=limit
+            limit=limit,
+            skip_count=skip_count
         )
 
         # Log audit event
@@ -1065,7 +1071,7 @@ def fetch_patient_data_by_key():
         return jsonify({'success': True, 'data': patient_data})
 
     except Exception as e:
-        logger.error(f"Record linkage by key failed: {e}")
+        logger.error(f"Record linkage by key failed: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 400
 
 

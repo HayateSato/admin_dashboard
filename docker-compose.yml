@@ -134,6 +134,7 @@ services:
       - "${FLASK_PORT:-5000}:5000"
     volumes:
       - dashboard_logs:/app/logs
+      - fl_models:/app/models
       - ./output/centrally_anonymized_records:/app/modules/utils_central_anon/output
       - ./output/linked_records:/app/exports
     networks:

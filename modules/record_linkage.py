@@ -129,12 +129,15 @@ class RecordLinkage:
         try:
             import psycopg2
 
+            logger.info(f"Fetching metadata from PostgreSQL for unique_key: {unique_key[:16]}...")
+
             conn = psycopg2.connect(
                 host=self.config.POSTGRES_HOST,
                 port=self.config.POSTGRES_PORT,
                 database=self.config.POSTGRES_DB,
                 user=self.config.POSTGRES_USER,
-                password=self.config.POSTGRES_PASSWORD
+                password=self.config.POSTGRES_PASSWORD,
+                connect_timeout=10
             )
 
             cursor = conn.cursor()
@@ -154,6 +157,7 @@ class RecordLinkage:
             conn.close()
 
             if result:
+                logger.info(f"   Metadata found in PostgreSQL for {unique_key[:16]}...")
                 return {
                     'unique_key': result[0],
                     'created_at': result[1].isoformat() if result[1] else None,
@@ -161,6 +165,8 @@ class RecordLinkage:
                     'device_id': result[3],
                     'privacy_settings': result[4]
                 }
+            else:
+                logger.info(f"   No metadata found in PostgreSQL for {unique_key[:16]}...")
 
             return None
 
@@ -168,7 +174,7 @@ class RecordLinkage:
             logger.warning("psycopg2 not installed, cannot query PostgreSQL")
             return None
         except Exception as e:
-            logger.error(f"Failed to fetch patient metadata: {e}")
+            logger.error(f"Failed to fetch patient metadata: {e}", exc_info=True)
             return None
 
     def fetch_patient_sensor_data(self, unique_key: str, start_time: Optional[str] = None,
@@ -188,10 +194,13 @@ class RecordLinkage:
         try:
             from influxdb_client import InfluxDBClient
 
+            logger.info(f"Fetching raw sensor data for unique_key: {unique_key[:16]}...")
+
             client = InfluxDBClient(
                 url=self.config.INFLUX_URL,
                 token=self.config.INFLUX_TOKEN,
-                org=self.config.INFLUX_ORG
+                org=self.config.INFLUX_ORG,
+                timeout=60000  # 60 second timeout for data fetch
             )
 
             query_api = client.query_api()
@@ -207,19 +216,27 @@ class RecordLinkage:
                 if not end_time.endswith('Z') and '+' not in end_time:
                     end_time = end_time + ':00Z'
 
-            time_range = f"start: {start_time if start_time else '-24h'}"
+            time_range = f"start: {start_time if start_time else '-365d'}"
             if end_time:
                 time_range += f", stop: {end_time}"
 
-            # Query InfluxDB for sensor data
+            logger.info(f"   Time range: {time_range}")
+            logger.info(f"   Bucket: {self.config.INFLUX_BUCKET_RAW}")
+
+            # Query InfluxDB for sensor data - improved query to handle tag-based filtering
+            # Filter only ECG data to reduce data volume
             query = f'''
                 from(bucket: "{self.config.INFLUX_BUCKET_RAW}")
                     |> range({time_range})
                     |> filter(fn: (r) => r["unique_key"] == "{unique_key}")
+                    |> filter(fn: (r) => r["_field"] == "ecg")
                     |> limit(n: {limit})
             '''
 
+            logger.info(f"   Executing raw data query (limit: {limit})...")
+            logger.info(f"   Query: {query}")
             result = query_api.query(query)
+            logger.info(f"   Query execution completed, parsing results...")
 
             # Parse results
             data_points = []
@@ -235,7 +252,7 @@ class RecordLinkage:
 
             client.close()
 
-            logger.info(f"Fetched {len(data_points)} sensor data points for {unique_key}")
+            logger.info(f"   Raw data query complete: Found {len(data_points)} data points")
 
             return data_points
 
@@ -243,7 +260,7 @@ class RecordLinkage:
             logger.warning("influxdb_client not installed, cannot query InfluxDB")
             return []
         except Exception as e:
-            logger.error(f"Failed to fetch sensor data: {e}")
+            logger.error(f"Failed to fetch sensor data: {e}", exc_info=True)
             return []
 
     def fetch_patient_anonymized_data(self, unique_key: str, start_time: Optional[str] = None,
@@ -263,10 +280,13 @@ class RecordLinkage:
         try:
             from influxdb_client import InfluxDBClient
 
+            logger.info(f"Fetching anonymized data for unique_key: {unique_key[:16]}...")
+
             client = InfluxDBClient(
                 url=self.config.INFLUX_URL,
                 token=self.config.INFLUX_TOKEN,
-                org=self.config.INFLUX_ORG
+                org=self.config.INFLUX_ORG,
+                timeout=60000  # 60 second timeout for data fetch
             )
 
             query_api = client.query_api()
@@ -280,18 +300,24 @@ class RecordLinkage:
                 if not end_time.endswith('Z') and '+' not in end_time:
                     end_time = end_time + ':00Z'
 
-            time_range = f"start: {start_time if start_time else '-24h'}"
+            time_range = f"start: {start_time if start_time else '-365d'}"
             if end_time:
                 time_range += f", stop: {end_time}"
 
+            logger.info(f"   Time range: {time_range}")
+            logger.info(f"   Bucket: {self.config.INFLUX_BUCKET_ANON}")
+
             # Query anonymized bucket
+            # Filter only ECG data to reduce data volume
             query = f'''
                 from(bucket: "{self.config.INFLUX_BUCKET_ANON}")
                     |> range({time_range})
                     |> filter(fn: (r) => r["unique_key"] == "{unique_key}")
+                    |> filter(fn: (r) => r["_field"] == "ecg")
                     |> limit(n: {limit})
             '''
 
+            logger.info(f"   Executing anonymized data query...")
             result = query_api.query(query)
 
             data_points = []
@@ -308,7 +334,7 @@ class RecordLinkage:
 
             client.close()
 
-            logger.info(f"Fetched {len(data_points)} anonymized data points for {unique_key}")
+            logger.info(f"   Anonymized data query complete: Found {len(data_points)} data points")
 
             return data_points
 
@@ -316,7 +342,7 @@ class RecordLinkage:
             logger.warning("influxdb_client not installed")
             return []
         except Exception as e:
-            logger.error(f"Failed to fetch anonymized data: {e}")
+            logger.error(f"Failed to fetch anonymized data: {e}", exc_info=True)
             return []
 
     def link_patient_data(self, given_name: str, family_name: str, dob: str, gender: str,
@@ -388,10 +414,102 @@ class RecordLinkage:
 
         return result
 
+    def count_recording_sessions(self, unique_key: str, start_time: Optional[str] = None,
+                                 end_time: Optional[str] = None) -> Dict[str, int]:
+        """
+        Count unique recording sessions (not individual data points) in InfluxDB
+        Uses session_id tag to count distinct recording sessions
+
+        Args:
+            unique_key: Hashed unique identifier
+            start_time: Start time (ISO format)
+            end_time: End time (ISO format)
+
+        Returns:
+            Dictionary with counts: {'raw_sessions': int, 'anonymized_sessions': int}
+        """
+        try:
+            from influxdb_client import InfluxDBClient
+
+            logger.info(f"Counting recording sessions for unique_key: {unique_key[:16]}...")
+
+            client = InfluxDBClient(
+                url=self.config.INFLUX_URL,
+                token=self.config.INFLUX_TOKEN,
+                org=self.config.INFLUX_ORG,
+                timeout=30000
+            )
+
+            query_api = client.query_api()
+
+            # Convert datetime-local format to RFC3339 if needed
+            if start_time and 'T' in start_time:
+                if not start_time.endswith('Z') and '+' not in start_time:
+                    start_time = start_time + ':00Z'
+
+            if end_time and 'T' in end_time:
+                if not end_time.endswith('Z') and '+' not in end_time:
+                    end_time = end_time + ':00Z'
+
+            time_range = f"start: {start_time if start_time else '-365d'}"
+            if end_time:
+                time_range += f", stop: {end_time}"
+
+            # Count unique raw data sessions using session_id tag
+            # Use distinct() to count unique session_ids
+            raw_count_query = f'''
+                from(bucket: "{self.config.INFLUX_BUCKET_RAW}")
+                    |> range({time_range})
+                    |> filter(fn: (r) => r["unique_key"] == "{unique_key}")
+                    |> filter(fn: (r) => r["_field"] == "ecg")
+                    |> keep(columns: ["session_id"])
+                    |> distinct(column: "session_id")
+                    |> count()
+            '''
+
+            logger.info(f"   Counting unique raw recording sessions...")
+            raw_result = query_api.query(raw_count_query)
+            raw_sessions = 0
+            for table in raw_result:
+                for record in table.records:
+                    raw_sessions += record.get_value()
+
+            # Count unique anonymized data sessions
+            anon_count_query = f'''
+                from(bucket: "{self.config.INFLUX_BUCKET_ANON}")
+                    |> range({time_range})
+                    |> filter(fn: (r) => r["unique_key"] == "{unique_key}")
+                    |> filter(fn: (r) => r["_field"] == "ecg")
+                    |> keep(columns: ["session_id"])
+                    |> distinct(column: "session_id")
+                    |> count()
+            '''
+
+            logger.info(f"   Counting unique anonymized recording sessions...")
+            anon_result = query_api.query(anon_count_query)
+            anon_sessions = 0
+            for table in anon_result:
+                for record in table.records:
+                    anon_sessions += record.get_value()
+
+            client.close()
+
+            logger.info(f"   Found {raw_sessions} raw sessions and {anon_sessions} anonymized sessions")
+
+            return {
+                'raw_count': raw_sessions,
+                'anonymized_count': anon_sessions,
+                'total_count': raw_sessions + anon_sessions
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to count recording sessions: {e}", exc_info=True)
+            return {'raw_count': 0, 'anonymized_count': 0, 'total_count': 0}
+
     def link_patient_data_by_key(self, unique_key: str,
                                  start_time: Optional[str] = None, end_time: Optional[str] = None,
                                  include_raw: bool = True, include_anonymized: bool = True,
-                                 limit: int = 1000) -> Dict:
+                                 limit: int = 1000, skip_count: bool = True) -> Dict:
         """
         Complete record linkage using unique_key directly
 
@@ -402,24 +520,34 @@ class RecordLinkage:
             include_raw: Include raw sensor data
             include_anonymized: Include anonymized sensor data
             limit: Max records per data source
+            skip_count: Deprecated parameter (kept for compatibility)
 
         Returns:
-            Complete patient data package
+            Complete patient data package with ECG data counts
         """
+        logger.info(f"=== Starting Record Linkage for unique_key: {unique_key[:16]}... ===")
+        logger.info(f"   Time range: {start_time or 'default'} to {end_time or 'now'}")
+        logger.info(f"   Include raw: {include_raw}, Include anonymized: {include_anonymized}")
+        logger.info(f"   Data limit: {limit} ECG points per source")
+
         # Fetch metadata
+        logger.info("   Fetching metadata from PostgreSQL...")
         metadata = self.fetch_patient_metadata(unique_key)
 
         # Fetch sensor data
         raw_data = []
         if include_raw:
+            logger.info("   Fetching raw sensor data from InfluxDB...")
             raw_data = self.fetch_patient_sensor_data(unique_key, start_time, end_time, limit)
 
         # Fetch anonymized data
         anonymized_data = []
         if include_anonymized:
+            logger.info("   Fetching anonymized data from InfluxDB...")
             anonymized_data = self.fetch_patient_anonymized_data(unique_key, start_time, end_time, limit)
 
         # Compile complete record
+        # Use actual fetched counts for display (simpler and more reliable)
         result = {
             'query_info': {
                 'given_name': 'Unknown',
@@ -441,13 +569,17 @@ class RecordLinkage:
             'summary': {
                 'metadata_found': metadata is not None,
                 'raw_data_points': len(raw_data),
+                'raw_data_total': len(raw_data),  # Show actual fetched count
                 'anonymized_data_points': len(anonymized_data),
-                'total_data_points': len(raw_data) + len(anonymized_data)
+                'anonymized_data_total': len(anonymized_data),  # Show actual fetched count
+                'total_data_points': len(raw_data) + len(anonymized_data),
+                'total_data_in_db': len(raw_data) + len(anonymized_data)  # Show actual fetched count
             }
         }
 
-        logger.info(f"Record linkage complete for unique_key {unique_key[:16]}...: "
-                   f"{result['summary']['total_data_points']} total data points")
+        logger.info(f"=== Record linkage complete for unique_key {unique_key[:16]}... ===")
+        logger.info(f"   Fetched: {result['summary']['total_data_points']} ECG data points")
+        logger.info(f"   Raw: {len(raw_data)}, Anonymized: {len(anonymized_data)}")
 
         return result
 
