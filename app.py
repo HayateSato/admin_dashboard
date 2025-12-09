@@ -831,11 +831,11 @@ def verify_unique_key():
             'error': 'Unique key is required'
         }), 400
 
-    # Validate unique key format (64 hex characters)
-    if not isinstance(unique_key, str) or len(unique_key) != 64:
+    # Validate unique key format (base64, minimum 64 characters)
+    if not isinstance(unique_key, str) or len(unique_key) < 64:
         return jsonify({
             'success': False,
-            'error': 'Invalid unique key format. Must be 64 hexadecimal characters.'
+            'error': 'Invalid unique key format. Must be a base64-encoded string (at least 64 characters).'
         }), 400
 
     try:
@@ -1036,9 +1036,9 @@ def fetch_patient_data_by_key():
     if not unique_key:
         return jsonify({'success': False, 'error': 'Unique key is required'}), 400
 
-    # Validate unique key format
-    if not isinstance(unique_key, str) or len(unique_key) != 64:
-        return jsonify({'success': False, 'error': 'Invalid unique key format (must be 64 hex characters)'}), 400
+    # Validate unique key format (base64, minimum 64 characters)
+    if not isinstance(unique_key, str) or len(unique_key) < 64:
+        return jsonify({'success': False, 'error': 'Invalid unique key format (must be base64-encoded, at least 64 characters)'}), 400
 
     try:
         logger.info(f"Record linkage request for unique_key: {unique_key[:16]}...")

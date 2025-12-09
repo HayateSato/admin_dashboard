@@ -21,56 +21,118 @@ class RecordLinkage:
     def generate_unique_key(self, given_name: str, family_name: str, dob: str, gender: str) -> str:
         """
         Generate unique_key using Bloom Filter with SHA256 hashing
-        MUST match Flutter app implementation exactly!
+        MUST match PHP privacyUmbrella implementation exactly!
 
-        Flutter implementation: lib/src/privacy/bloom_filter.dart
-        - Uses pipe-separated format: "givenname|familyname|dob|gender"
-        - Applies 3 hash functions with seeds (0, 1, 2)
-        - Creates 256-bit bloom filter
-        - Converts to hex string
+        PHP implementation: privacyUmbrella_bloomfilter_f-pprl/bloomfilter.php
+        - Uses field-specific seeds (vorname, nachname, geburtsdatum, geschlecht)
+        - Global seed for additional entropy
+        - Applies 25 hash functions per field
+        - Creates 500-bit bloom filter
+        - Converts to base64 string
 
         Args:
             given_name: Patient's given name
             family_name: Patient's family name
             dob: Date of birth (YYYY-MM-DD format)
-            gender: Gender (male/female/other)
+            gender: Gender (male/female/other) - will be converted to m/f format
 
         Returns:
-            Hex-encoded bloom filter hash (64 hex chars)
+            Base64-encoded bloom filter hash
         """
-        # Normalize inputs (same as Flutter: trim + lowercase)
+        # Convert gender format: "male" -> "m", "female" -> "f"
+        # This ensures compatibility with PHP partner implementation
+        normalized_gender = gender.strip().lower()
+        if normalized_gender in ['male', 'männlich', 'maennlich']:
+            normalized_gender = 'm'
+        elif normalized_gender in ['female', 'weiblich']:
+            normalized_gender = 'f'
+        # Keep other values as-is (already 'm', 'f', or 'other')
+
+        # Normalize other inputs (trim + lowercase)
         normalized_given_name = given_name.strip().lower()
         normalized_family_name = family_name.strip().lower()
-        normalized_gender = gender.strip().lower()
         normalized_dob = dob.strip()
 
-        # Concatenate with pipe separator (MUST match Flutter format)
-        user_data = f"{normalized_given_name}|{normalized_family_name}|{normalized_dob}|{normalized_gender}"
+        logger.info(f"[Bloom Filter] Generating unique key (PHP-compatible)")
+        logger.info(f"   Given Name: '{normalized_given_name}'")
+        logger.info(f"   Family Name: '{normalized_family_name}'")
+        logger.info(f"   DOB: '{normalized_dob}'")
+        logger.info(f"   Gender: '{normalized_gender}'")
 
-        logger.info(f"[Bloom Filter] Generating unique key")
-        logger.info(f"   Input string for hashing: '{user_data}'")
+        # Generate bloom filter with PHP-compatible algorithm
+        filter_size = 500  # bits (m)
+        num_hash_functions = 25  # k
 
-        # Generate bloom filter
-        filter_size = 256  # bits
-        num_hash_functions = 3
-        bit_array = [False] * filter_size
+        # Field-specific seeds (MUST match PHP and Dart implementations)
+        field_seeds = {
+            'vorname': 123124567,
+            'nachname': 674532674,
+            'geburtsdatum': 345386767,
+            'geschlecht': 566744456,
+        }
+        global_seed = 567895675
 
-        # Apply multiple hash functions with seeds
-        for seed in range(num_hash_functions):
-            hash_value = self._hash_function(user_data, seed)
-            bit_position = hash_value % filter_size
-            bit_array[bit_position] = True
+        # Initialize bit array
+        bit_array = [0] * filter_size
 
-        # Convert bit array to hex string
-        unique_key = self._bit_array_to_hex(bit_array)
+        # Create person map with German field names (matches PHP)
+        person = {
+            'vorname': normalized_given_name,
+            'nachname': normalized_family_name,
+            'geburtsdatum': normalized_dob,
+            'geschlecht': normalized_gender,
+        }
 
-        logger.info(f"Generated unique_key for {given_name} {family_name}")
+        # Process each field independently
+        for field, value in person.items():
+            if field not in field_seeds:
+                continue
+
+            field_seed = field_seeds[field]
+
+            # Apply hash functions for this field
+            for i in range(num_hash_functions):
+                position = self._hash_function_php(value, global_seed, field_seed, i, filter_size)
+                bit_array[position] = 1
+
+        # Convert bit array to base64 string
+        unique_key = self._bit_array_to_base64(bit_array)
+
+        logger.info(f"Generated unique_key for {given_name} {family_name}: {unique_key[:20]}...")
 
         return unique_key
 
+    def _hash_function_php(self, value: str, global_seed: int, field_seed: int, i: int, filter_size: int) -> int:
+        """
+        Hash function that matches PHP implementation exactly:
+        hash('sha256', globalSeed + ':' + fieldSeed + ':' + i + ':' + value)
+
+        Args:
+            value: Field value to hash
+            global_seed: Global seed for entire bloom filter
+            field_seed: Field-specific seed
+            i: Iteration number (0 to k-1)
+            filter_size: Size of bloom filter (m)
+
+        Returns:
+            Bit position in bloom filter (0 to m-1)
+        """
+        # Construct data string exactly like PHP
+        data = f"{global_seed}:{field_seed}:{i}:{value}"
+
+        # SHA-256 hash
+        hash_digest = hashlib.sha256(data.encode('utf-8')).hexdigest()
+
+        # Take first 15 hex characters and convert to integer (matches PHP hexdec(substr($hash, 0, 15)))
+        num = int(hash_digest[:15], 16)
+
+        # Modulo to get position in bit array
+        return num % filter_size
+
     def _hash_function(self, input_str: str, seed: int) -> int:
         """
-        Hash function with seed (matches Flutter implementation)
+        OLD hash function - kept for backward compatibility
+        (This is the old Flutter implementation, not used anymore)
 
         Args:
             input_str: Input string to hash
@@ -90,9 +152,45 @@ class RecordLinkage:
 
         return abs(hash_value)
 
+    def _bit_array_to_base64(self, bit_array: List[int]) -> str:
+        """
+        Convert bit array to base64 string (matches PHP implementation)
+
+        Args:
+            bit_array: List of integers (0 or 1) representing bits
+
+        Returns:
+            Base64-encoded string
+        """
+        import base64
+
+        # Convert bit array to bit string
+        bit_string = ''.join(str(bit) for bit in bit_array)
+
+        # Convert to bytes (8 bits per byte)
+        bytes_list = []
+        for i in range(0, len(bit_string), 8):
+            # Get 8 bits (or remaining bits)
+            byte_bits = bit_string[i:i+8]
+
+            # Pad with zeros if necessary (matches PHP str_pad)
+            if len(byte_bits) < 8:
+                byte_bits = byte_bits.ljust(8, '0')
+
+            # Convert to byte value
+            byte_value = int(byte_bits, 2)
+            bytes_list.append(byte_value)
+
+        # Convert to bytes object and encode as base64
+        bytes_obj = bytes(bytes_list)
+        base64_str = base64.b64encode(bytes_obj).decode('ascii')
+
+        return base64_str
+
     def _bit_array_to_hex(self, bit_array: List[bool]) -> str:
         """
-        Convert bit array to hexadecimal string (matches Flutter implementation)
+        OLD conversion function - kept for backward compatibility
+        Convert bit array to hexadecimal string (old Flutter implementation)
 
         Args:
             bit_array: List of boolean values representing bits

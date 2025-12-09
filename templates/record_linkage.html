@@ -110,12 +110,11 @@
                 <div class="col-md-12">
                     <label for="unique_key_search" class="form-label">Unique Key <span class="text-danger">*</span></label>
                     <input type="text" class="form-control font-monospace" id="unique_key_search" name="unique_key"
-                           placeholder="0000000000000000000008008000000000000000000000000000000100000000"
-                           pattern="[0-9a-fA-F]{64}"
+                           placeholder="ApAQAICFCAcAAFAAQQIAggAMABmg0UEIQCAMgpCkiICjgRQEIUAAAaNAAwACEAAVhCAJGAYIgACRIcAAIgCA"
+                           pattern="[A-Za-z0-9+/=]+"
                            minlength="64"
-                           maxlength="64"
                            required>
-                    <small class="text-muted">Paste the 64-character hexadecimal unique key</small>
+                    <small class="text-muted">Paste the base64-encoded unique key (from new bloom filter)</small>
                 </div>
             </div>
 
@@ -392,11 +391,11 @@ document.getElementById('recordLinkageForm').addEventListener('submit', async fu
 document.getElementById('uniqueKeySearchForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const uniqueKey = document.getElementById('unique_key_search').value.trim().toLowerCase();
+    const uniqueKey = document.getElementById('unique_key_search').value.trim();
 
-    // Validate unique key format
-    if (!/^[0-9a-f]{64}$/.test(uniqueKey)) {
-        alert('Invalid unique key format. Must be exactly 64 hexadecimal characters.');
+    // Validate unique key format (base64)
+    if (!/^[A-Za-z0-9+/=]+$/.test(uniqueKey) || uniqueKey.length < 64) {
+        alert('Invalid unique key format. Must be a base64-encoded string (at least 64 characters).');
         return;
     }
 
