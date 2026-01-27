@@ -15,7 +15,7 @@ services:
       - "5433:5432" # External access can be made on 5433, but internally it is running on/mapped to 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./db/dump_clean.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
     networks:
       - privacy_umbrella_network
