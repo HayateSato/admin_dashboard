@@ -14,7 +14,7 @@ This folder contains the configuration and test scripts for the Eclipse Mosquitt
 ## Purpose
 
 The MQTT broker facilitates communication between:
-- **Flutter mobile apps** - Receive anonymization commands (K value, time window)
+- **SmarKo apps (Flutter mobile apps)** - Receive anonymization commands (K value, time window)
 - **Admin dashboard** - Send privacy settings, monitor responses
 
 ### Topic Structure
@@ -43,6 +43,9 @@ The broker runs on:
 - **Logging**: Error, warning, and notice levels
 
 ## Test Scripts
+#### Pre-requisite
+> Your SmarKo app needs to subscribe to the IP of your server/PC
+
 
 ### Quick Test
 

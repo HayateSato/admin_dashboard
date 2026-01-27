@@ -76,7 +76,11 @@ This guide explains how to deploy the Privacy Umbrella Admin Dashboard and all r
 ### Services
 
 **Remote Service (Pre-configured - NO SETUP NEEDED):**
-1. **InfluxDB** - Time-series biometric data storage (https://pu-influxdb.smarko-health.de/)
+1. **SmarKo App (flutter app)** (https://gitlab.com/mcs-datalabs/mcs-smart-data.git)
+   - c_synchro_ano branch  --> clone this one 
+   - c_asynchro_ano branch  --> anonymization happens non-real time, only after the app stops recording
+
+2. **InfluxDB** - Time-series biometric data storage (https://pu-influxdb.smarko-health.de/)
    - Organization: `MCS Datalabs GmbH`
    - Buckets: `raw-data`, `anonymized-data`
 
