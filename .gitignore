@@ -42,7 +42,6 @@ documentation/
 !documentation/devs
 output/
 
-.env_backup
 quick_mqtt_test.py
 templates/old
 
