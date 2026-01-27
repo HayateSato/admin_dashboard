@@ -1,18 +1,28 @@
 # Mosquitto MQTT Broker Configuration
 
-This folder contains the configuration for the Eclipse Mosquitto MQTT broker used by the Privacy Umbrella system.
+This folder contains the configuration and test scripts for the Eclipse Mosquitto MQTT broker used by the Privacy Umbrella system.
 
 ## Files
 
 | File | Description |
 |------|-------------|
 | `mosquitto.conf` | Main broker configuration file |
+| `test_mqtt.py` | Full MQTT test suite with interactive mode |
+| `quick_mqtt_test.py` | Quick command-line test script |
+| `requirements_mqtt.txt` | Python dependencies for test scripts |
 
 ## Purpose
 
 The MQTT broker facilitates communication between:
-- **Flutter mobile apps** (ECG data publishers)
-- **Admin dashboard** (subscriber for monitoring)
+- **Flutter mobile apps** - Receive anonymization commands (K value, time window)
+- **Admin dashboard** - Send privacy settings, monitor responses
+
+### Topic Structure
+
+| Topic | Direction | Description |
+|-------|-----------|-------------|
+| `anonymization/commands` | Dashboard → App | Send K value and time window settings |
+| `anonymization/responses` | App → Dashboard | Receive acknowledgments from apps |
 
 ## Docker Usage
 
@@ -31,6 +41,44 @@ The broker runs on:
 - **Anonymous access**: Enabled (for development)
 - **Persistence**: Enabled (messages saved to disk)
 - **Logging**: Error, warning, and notice levels
+
+## Test Scripts
+
+### Quick Test
+
+Send a single anonymization command:
+```bash
+cd mosquitto
+pip install -r requirements_mqtt.txt
+python quick_mqtt_test.py 5  # Send K=5 command
+```
+
+### Full Test Suite
+
+Run comprehensive tests with interactive mode:
+```bash
+cd mosquitto
+python test_mqtt.py
+```
+
+The test suite includes:
+1. Connection test
+2. Publish anonymization command
+3. Subscribe to Flutter app responses
+4. Full command/response workflow
+5. Interactive mode for manual testing
+
+### Manual Testing with Mosquitto CLI
+
+Subscribe to all anonymization topics:
+```bash
+docker-compose exec mosquitto mosquitto_sub -t "anonymization/#" -v
+```
+
+Publish a test command:
+```bash
+docker-compose exec mosquitto mosquitto_pub -t "anonymization/commands" -m '{"kValue": 5}'
+```
 
 ## Production Considerations
 

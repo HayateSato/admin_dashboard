@@ -4,8 +4,12 @@ Run this to test MQTT communication without frontend
 """
 
 import sys
+import os
 import time
 import json
+
+# Add parent directory to path to import from modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.mqtt_manager import MQTTManager
 
 def test_mqtt_connection():

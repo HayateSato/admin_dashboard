@@ -1,0 +1,3 @@
+# MQTT test script dependencies
+# Note: paho-mqtt is also included in the main project requirements.txt
+paho-mqtt>=1.6.1
