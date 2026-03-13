@@ -31,15 +31,15 @@ CREATE INDEX IF NOT EXISTS idx_users_last_session ON users(last_session);
 
 -- Admin users table -----------------------------------------------------------------------
 -- Stores admin dashboard users (separate from patients)
-CREATE TABLE IF NOT EXISTS admin_users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,     -- SHA256 hashed password
-    role VARCHAR(50) DEFAULT 'user',          -- admin, user, auditor
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
-);
+-- CREATE TABLE IF NOT EXISTS admin_users (
+--     id SERIAL PRIMARY KEY,
+--     username VARCHAR(100) NOT NULL UNIQUE,
+--     password_hash VARCHAR(255) NOT NULL,     -- SHA256 hashed password
+--     role VARCHAR(50) DEFAULT 'user',          -- admin, user, auditor
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     last_login TIMESTAMP,
+--     is_active BOOLEAN DEFAULT TRUE
+-- );
 
 -- Create default admin user (password: admin123 - CHANGE IN PRODUCTION!)
 INSERT INTO admin_users (username, password_hash, role)
