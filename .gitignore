@@ -1,6 +1,9 @@
 # Environment configuration (contains secrets)
 .env
 
+# SSL certificates (private keys must never be committed)
+nginx/certs/
+
 # Python
 __pycache__/
 *.py[cod]
