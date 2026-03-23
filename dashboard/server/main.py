@@ -152,7 +152,59 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', user=session.get('user'), role=session.get('role'))
+    def _health(url):
+        """Return (status_str, detail_dict) for a service /health endpoint."""
+        try:
+            r = _requests.get(url + '/health', timeout=3)
+            data = r.json()
+            return ('ok' if r.ok else 'error'), data
+        except Exception:
+            return 'unreachable', {}
+
+    fl_status,       fl_data       = _health(FEDERATED_LEARNING_URL)
+    patient_status,  _             = _health(PATIENT_REGISTRY_URL)
+    record_status,   _             = _health(RECORD_LINKAGE_URL)
+    anon_status,     _             = _health(CENTRAL_ANON_URL)
+
+    fl_server_running = fl_data.get('fl_server_running', False)
+
+    services = [
+        {'name': 'Patient Registry',      'status': patient_status,  'port': 7001, 'icon': 'bi-people-fill'},
+        {'name': 'Federated Learning',    'status': fl_status,       'port': 7002, 'icon': 'bi-diagram-3'},
+        {'name': 'Record Linkage',        'status': record_status,   'port': 7003, 'icon': 'bi-link-45deg'},
+        {'name': 'Central Anonymization', 'status': anon_status,     'port': 6000, 'icon': 'bi-incognito'},
+    ]
+
+    healthy_count = sum(1 for s in services if s['status'] == 'ok')
+
+    # Try to fetch recent anonymization jobs
+    recent_jobs = []
+    try:
+        r = _requests.get(CENTRAL_ANON_URL + '/api/v1/anonymize/jobs', timeout=3)
+        if r.ok:
+            recent_jobs = r.json().get('jobs', [])[:5]
+    except Exception:
+        pass
+
+    system_status = {
+        'cpu_percent': 0.0,
+        'memory_percent': 0.0,
+        'disk_percent': 0.0,
+        'services_healthy': healthy_count,
+        'influxdb_status': 'external',
+        'postgres_status': 'internal',
+        'fl_server_status': 'running' if fl_server_running else ('stopped' if fl_status == 'ok' else 'unknown'),
+    }
+
+    return render_template(
+        'dashboard.html',
+        user=session.get('user'),
+        role=session.get('role'),
+        system_status=system_status,
+        services=services,
+        recent_jobs=recent_jobs,
+        recent_audits=[],
+    )
 
 
 @app.route('/registered-patients')
