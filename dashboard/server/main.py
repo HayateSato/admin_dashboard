@@ -187,9 +187,6 @@ def dashboard():
         pass
 
     system_status = {
-        'cpu_percent': 0.0,
-        'memory_percent': 0.0,
-        'disk_percent': 0.0,
         'services_healthy': healthy_count,
         'influxdb_status': 'external',
         'postgres_status': 'internal',

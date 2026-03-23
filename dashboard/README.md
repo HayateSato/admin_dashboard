@@ -66,6 +66,21 @@ dashboard/
 | `/anonymization` | `anonymization.html` | Login required |
 | `/settings` | `settings.html` | Admin only |
 
+### Dashboard Overview page (`/dashboard`)
+
+The overview page displays live status fetched directly from each backend service at page load:
+
+**Microservice Health** — one card per service showing `OK`, `UNREACHABLE`, or error state:
+
+| Service | Health endpoint polled |
+|---------|----------------------|
+| Patient Registry | `patient_registry:7001/health` |
+| Federated Learning | `federated_learning:7002/health` |
+| Record Linkage | `record_linkage:7003/health` |
+| Central Anonymization | `central_anon:6000/health` |
+
+**Infrastructure** — static indicators for InfluxDB (external), PostgreSQL (internal), and the FL gRPC server (running/stopped derived from the FL service health response).
+
 ---
 
 ## API Proxy Routes

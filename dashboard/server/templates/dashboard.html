@@ -11,64 +11,6 @@
     </div>
 </div>
 
-<!-- System Status Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">CPU Usage</h6>
-                        <h3>{{ "%.1f"|format(system_status.cpu_percent) }}%</h3>
-                    </div>
-                    <i class="bi bi-cpu" style="font-size: 2rem;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Memory Usage</h6>
-                        <h3>{{ "%.1f"|format(system_status.memory_percent) }}%</h3>
-                    </div>
-                    <i class="bi bi-memory" style="font-size: 2rem;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Disk Usage</h6>
-                        <h3>{{ "%.1f"|format(system_status.disk_percent) }}%</h3>
-                    </div>
-                    <i class="bi bi-hdd" style="font-size: 2rem;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Services Healthy</h6>
-                        <h3>{{ system_status.services_healthy }}/4</h3>
-                    </div>
-                    <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Microservice Health -->
 <div class="row mb-4">
