@@ -1,0 +1,16 @@
+# ── Central Anonymization API — Dependencies ──────────────────────────────
+#
+# Install all (server + client):
+#   pip install -r requirements.txt
+#
+# The k-anonymity algorithm itself (core/) uses only Python stdlib —
+# no extra packages needed for the algorithm.
+
+# Server
+Flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+
+# Client
+requests>=2.31.0
+urllib3>=2.0.0
