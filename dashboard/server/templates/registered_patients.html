@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Registered Patients - Privacy Umbrella Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-people-fill"></i> Registered Patients</h2>
+            <p class="text-muted">Manage privacy settings and remote anonymization for registered patients</p>
+        </div>
+    </div>
+
+    <!-- MQTT Connection Status -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="alert alert-secondary" role="alert">
+                <i class="bi bi-info-circle"></i>
+                <strong>MQTT Status:</strong> <span id="mqtt-status">Checking...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="search-input" placeholder="Search by unique key...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="filter-remote-anon">
+                <option value="">All Patients</option>
+                <option value="enabled">Remote Anon Enabled</option>
+                <option value="disabled">Remote Anon Disabled</option>
+            </select>
+        </div>
+        <div class="col-md-3 text-end">
+            <button class="btn btn-dark" onclick="loadPatients()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Patients Table -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Registered Patients List</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Admin Controls:</strong> You can adjust K-Value (2,3,5,10,15,20 - only higher values) and Time Window (5s,10s,15s,20s,30s) for patients <strong>only when Remote Anonymization is enabled by the patient</strong>.
+                        Select new values from the dropdowns and click <strong>Apply</strong> to send via MQTT.
+                        <br><small><strong>Important:</strong> Remote Anonymization must be enabled by the patient in their Flutter app. Admin cannot enable/disable this setting.</small>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Unique Key</th>
+                                    <th>Last Session</th>
+                                    <th>K-Value</th>
+                                    <th>Time Window</th>
+                                    <th>Auto Anon</th>
+                                    <th>Remote Anon</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patients-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner-border text-secondary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REMOVED: Modal-based settings update - now using inline editing in table -->
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let patients = [];
+
+// Load patients on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadPatients();
+    checkMQTTStatus();
+
+    // Set up search
+    document.getElementById('search-input').addEventListener('input', filterPatients);
+    document.getElementById('filter-remote-anon').addEventListener('change', filterPatients);
+});
+
+// Check MQTT connection status
+async function checkMQTTStatus() {
+    try {
+        const response = await fetch('/api/mqtt/status');
+        const data = await response.json();
+
+        const statusElement = document.getElementById('mqtt-status');
+        if (data.success && data.status.connected) {
+            statusElement.innerHTML = '<span class="badge bg-success">Connected</span> to ' + data.status.broker_host;
+        } else {
+            statusElement.innerHTML = '<span class="badge bg-danger">Disconnected</span> - MQTT features unavailable';
+        }
+    } catch (error) {
+        console.error('Error checking MQTT status:', error);
+        document.getElementById('mqtt-status').innerHTML = '<span class="badge bg-danger">Error</span>';
+    }
+}
+
+// Load all patients
+async function loadPatients() {
+    try {
+        const response = await fetch('/api/patients/list');
+        const data = await response.json();
+
+        if (data.success) {
+            patients = data.patients;
+            displayPatients(patients);
+        } else {
+            showError('Failed to load patients: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading patients:', error);
+        showError('Error loading patients: ' + error.message);
+    }
+}
+
+// Display patients in table
+function displayPatients(patientList) {
+    const tbody = document.getElementById('patients-table-body');
+    tbody.innerHTML = '';
+
+    if (patientList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No patients found</td></tr>';
+        return;
+    }
+
+    patientList.forEach(patient => {
+        const row = createPatientRow(patient);
+        tbody.appendChild(row);
+    });
+}
+
+// Create table row for patient
+function createPatientRow(patient) {
+    const row = document.createElement('tr');
+    row.dataset.uniqueKey = patient.unique_key;
+
+    // Format last session
+    const lastSession = patient.last_session ? new Date(patient.last_session).toLocaleString() : 'Never';
+
+    // Remote anon status badge (read-only - user controls this from Flutter app)
+    const remoteAnonBadge = patient.remote_anon_enabled
+        ? '<span class="badge bg-dark">Enabled</span>'
+        : '<span class="badge bg-secondary">Disabled</span>';
+
+    // Auto anon icon
+    const autoAnonIcon = patient.auto_anonymize
+        ? '<i class="bi bi-check-circle-fill text-dark"></i>'
+        : '<i class="bi bi-x-circle-fill text-secondary"></i>';
+
+    // K-value dropdown (only allow higher values) - Updated: 2, 3, 5, 10, 15, 20
+    const kValues = [2, 3, 5, 10, 15, 20];
+    const kOptions = kValues.map(k => {
+        const disabled = k <= patient.k_value && k !== patient.k_value;
+        const selected = k === patient.k_value;
+        const greyedOut = k < patient.k_value ? 'text-muted' : '';
+        return `<option value="${k}" ${disabled ? 'disabled' : ''} ${selected ? 'selected' : ''} class="${greyedOut}">${k}</option>`;
+    }).join('');
+
+    // Time window dropdown - Updated: 5s, 10s, 15s, 20s, 30s
+    const timeWindows = [5, 10, 15, 20, 30];
+    const timeOptions = timeWindows.map(t => {
+        const selected = t === patient.time_window;
+        return `<option value="${t}" ${selected ? 'selected' : ''}>${t}s</option>`;
+    }).join('');
+
+    row.innerHTML = `
+        <td>
+            <code class="small">${patient.unique_key_short}</code>
+            <button class="btn btn-sm btn-link p-0 ms-1" onclick="copyToClipboard('${patient.unique_key}')" title="Copy full key">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </td>
+        <td><small>${lastSession}</small></td>
+        <td>
+            <select class="form-select form-select-sm" style="width: 80px;"
+                    onchange="handleSettingChange('${patient.unique_key}', 'k_value', this.value)">
+                ${kOptions}
+            </select>
+        </td>
+        <td>
+            <select class="form-select form-select-sm" style="width: 90px;"
+                    onchange="handleSettingChange('${patient.unique_key}', 'time_window', this.value)">
+                ${timeOptions}
+            </select>
+        </td>
+        <td class="text-center">${autoAnonIcon}</td>
+        <td>${remoteAnonBadge}</td>
+        <td>
+            <button class="btn btn-sm btn-dark"
+                    id="apply-btn-${patient.unique_key}"
+                    onclick="applyChanges('${patient.unique_key}')"
+                    disabled
+                    style="display: none;">
+                <i class="bi bi-check"></i> Apply
+            </button>
+        </td>
+    `;
+
+    return row;
+}
+
+// Track pending changes for each patient
+let pendingChanges = {};
+
+// Handle setting change (K-value or time window)
+function handleSettingChange(uniqueKey, settingType, newValue) {
+    const patient = patients.find(p => p.unique_key === uniqueKey);
+    if (!patient) return;
+
+    const numValue = parseInt(newValue);
+
+    // Initialize pending changes for this patient
+    if (!pendingChanges[uniqueKey]) {
+        pendingChanges[uniqueKey] = {
+            k_value: patient.k_value,
+            time_window: patient.time_window,
+            auto_anonymize: patient.auto_anonymize
+        };
+    }
+
+    // Update pending change
+    pendingChanges[uniqueKey][settingType] = numValue;
+
+    // Check if there are actual changes
+    const hasChanges =
+        pendingChanges[uniqueKey].k_value !== patient.k_value ||
+        pendingChanges[uniqueKey].time_window !== patient.time_window;
+
+    // Show/enable Apply button
+    const applyBtn = document.getElementById(`apply-btn-${uniqueKey}`);
+    if (applyBtn) {
+        applyBtn.style.display = hasChanges ? 'inline-block' : 'none';
+        applyBtn.disabled = !hasChanges;
+    }
+}
+
+// Apply changes for a patient
+async function applyChanges(uniqueKey) {
+    const patient = patients.find(p => p.unique_key === uniqueKey);
+    if (!patient || !pendingChanges[uniqueKey]) return;
+
+    const settings = pendingChanges[uniqueKey];
+
+    try {
+        const response = await fetch(`/api/patients/${uniqueKey}/update-settings`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(settings)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess('Settings sent to device via MQTT!');
+
+            // Clear pending changes
+            delete pendingChanges[uniqueKey];
+
+            // Reload patients to refresh display
+            setTimeout(() => loadPatients(), 1000);
+        } else {
+            showError('Failed to send settings: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error applying settings:', error);
+        showError('Error applying settings: ' + error.message);
+    }
+}
+
+// Filter patients based on search and filter
+function filterPatients() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const filterValue = document.getElementById('filter-remote-anon').value;
+
+    let filtered = patients;
+
+    // Apply search filter
+    if (searchTerm) {
+        filtered = filtered.filter(p =>
+            p.unique_key.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    // Apply remote anon filter
+    if (filterValue === 'enabled') {
+        filtered = filtered.filter(p => p.remote_anon_enabled);
+    } else if (filterValue === 'disabled') {
+        filtered = filtered.filter(p => !p.remote_anon_enabled);
+    }
+
+    displayPatients(filtered);
+}
+
+// REMOVED: Modal-based settings update - now using inline editing
+// REMOVED: toggleRemoteAnon - remote anonymization is controlled by user in Flutter app only
+
+// Copy to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showSuccess('Unique key copied to clipboard!');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+    });
+}
+
+// Show success message
+function showSuccess(message) {
+    // Using Bootstrap toast or alert
+    alert('✅ ' + message);
+}
+
+// Show error message
+function showError(message) {
+    alert('❌ ' + message);
+
+    // Also log to console
+    console.error(message);
+}
+</script>
+{% endblock %}

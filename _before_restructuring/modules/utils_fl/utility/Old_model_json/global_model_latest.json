@@ -1,0 +1,165 @@
+{
+  "current_model": {
+    "model_type": "persistent_xgb_ensemble",
+    "round_number": 7,
+    "aggregated_weights": {
+      "trees": [
+        {
+          "tree_structure": "{\"type\":\"node\",\"featureIndex\":1,\"threshold\":0.9948453608247423,\"leftChild\":{\"type\":\"node\",\"featureIndex\":1,\"threshold\":0.4948453608247423,\"leftChild\":{\"type\":\"node\",\"featureIndex\":0,\"threshold\":0.3214285714285714,\"leftChild\":{\"type\":\"leaf\",\"prediction\":1.0},\"rightChild\":{\"type\":\"leaf\",\"prediction\":1.0}},\"rightChild\":{\"type\":\"leaf\",\"prediction\":1.0}},\"rightChild\":{\"type\":\"leaf\",\"prediction\":1.0}}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":1.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"node\",\"featureIndex\":0,\"threshold\":0.375,\"leftChild\":{\"type\":\"leaf\",\"prediction\":1.0},\"rightChild\":{\"type\":\"leaf\",\"prediction\":1.0}}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":1.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":1.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"node\",\"featureIndex\":0,\"threshold\":0.375,\"leftChild\":{\"type\":\"leaf\",\"prediction\":1.0},\"rightChild\":{\"type\":\"node\",\"featureIndex\":0,\"threshold\":0.625,\"leftChild\":{\"type\":\"leaf\",\"prediction\":1.0},\"rightChild\":{\"type\":\"leaf\",\"prediction\":1.0}}}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":0.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        }
+      ],
+      "feature_importance": {},
+      "config": {
+        "objective": "binary:logistic",
+        "maxDepth": 6,
+        "learningRate": 0.1,
+        "regAlpha": 0.0,
+        "regLambda": 1.0,
+        "gamma": 0.0,
+        "minChildWeight": 1.0,
+        "subsample": 1.0,
+        "colsampleByTree": 1.0,
+        "nEstimators": 100,
+        "basePrediction": 0.0
+      },
+      "num_boosted_rounds": 7,
+      "num_features": 0,
+      "client_contributions": [
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        }
+      ],
+      "aggregation_metadata": {
+        "method": "simple_blend",
+        "timestamp": "2025-11-12T16:05:43.446859",
+        "existing_trees": 6,
+        "new_trees": 1,
+        "total_trees": 7
+      }
+    },
+    "ensemble_info": {
+      "total_trees": 7,
+      "num_clients": 7,
+      "aggregation_method": "bagging_with_persistence",
+      "creation_timestamp": "2025-11-12T16:05:43.447814",
+      "is_incremental": true
+    }
+  },
+  "model_history": [
+    {
+      "round": 1,
+      "num_trees": 1,
+      "num_clients": 1,
+      "timestamp": "2025-11-11T13:55:09.259527",
+      "is_incremental": false
+    },
+    {
+      "round": 2,
+      "num_trees": 2,
+      "num_clients": 2,
+      "timestamp": "2025-11-11T13:55:22.966797",
+      "is_incremental": true
+    },
+    {
+      "round": 3,
+      "num_trees": 3,
+      "num_clients": 3,
+      "timestamp": "2025-11-12T15:28:10.402949",
+      "is_incremental": true
+    },
+    {
+      "round": 4,
+      "num_trees": 4,
+      "num_clients": 4,
+      "timestamp": "2025-11-12T15:43:02.957189",
+      "is_incremental": true
+    },
+    {
+      "round": 5,
+      "num_trees": 5,
+      "num_clients": 5,
+      "timestamp": "2025-11-12T15:52:21.654918",
+      "is_incremental": true
+    },
+    {
+      "round": 6,
+      "num_trees": 6,
+      "num_clients": 6,
+      "timestamp": "2025-11-12T15:57:14.758512",
+      "is_incremental": true
+    },
+    {
+      "round": 7,
+      "num_trees": 7,
+      "num_clients": 7,
+      "timestamp": "2025-11-12T16:05:43.447814",
+      "is_incremental": true
+    }
+  ],
+  "round_number": 7,
+  "last_saved": "2025-11-12T16:05:43.447824"
+}

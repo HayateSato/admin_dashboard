@@ -1,0 +1,7 @@
+Flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+grpcio>=1.50.0
+grpcio-tools>=1.50.0
+protobuf>=4.0.0
+xgboost>=2.0.0

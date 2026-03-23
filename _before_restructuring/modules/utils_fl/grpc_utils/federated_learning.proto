@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package federated_learning;
+
+option java_multiple_files = true;
+option java_package = "com.flxgb.demonstrator.grpc";
+
+// Federated Learning Service
+service FederatedLearningService {
+  // Client-side methods
+  rpc JoinTraining(JoinRequest) returns (JoinResponse);
+  rpc SendModelWeights(ModelWeightsRequest) returns (ModelWeightsResponse);
+  rpc GetGlobalModel(GlobalModelRequest) returns (GlobalModelResponse);
+  rpc SendMetrics(MetricsRequest) returns (MetricsResponse);
+
+  // Admin-side monitoring methods
+  rpc GetServerStatus(Empty) returns (ServerStatusResponse);
+  rpc GetConnectedClients(Empty) returns (ConnectedClientsResponse);
+  rpc GetTrainingStats(Empty) returns (TrainingStatsResponse);
+}
+
+// Messages
+message JoinRequest {
+  string client_id = 1;
+  ClientCapabilities capabilities = 2;
+}
+
+message JoinResponse {
+  bool accepted = 1;
+  string session_id = 2;
+  TrainingConfiguration config = 3;
+}
+
+message ModelWeightsRequest {
+  string client_id = 1;
+  string session_id = 2;
+  bytes model_weights = 3;  // Serialized model weights
+  ModelMetadata metadata = 4;
+}
+
+message ModelWeightsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GlobalModelRequest {
+  string client_id = 1;
+  string session_id = 2;
+}
+
+message GlobalModelResponse {
+  bool success = 1;
+  bytes global_model = 2;  // Serialized global model
+  ModelMetadata metadata = 3;
+}
+
+message MetricsRequest {
+  string client_id = 1;
+  string session_id = 2;
+  LocalMetrics metrics = 3;
+}
+
+message MetricsResponse {
+  bool success = 1;
+}
+
+// Supporting messages
+message ClientCapabilities {
+  int32 max_model_size = 1;
+  repeated string supported_algorithms = 2;
+  bool supports_differential_privacy = 3;
+}
+
+message TrainingConfiguration {
+  int32 num_rounds = 1;
+  map<string, string> hyperparameters = 2;
+  int32 expected_clients = 3;
+}
+
+message ModelMetadata {
+  int32 num_trees = 1;
+  int32 num_features = 2;
+  int32 model_size_bytes = 3;
+  string algorithm = 4;
+  int64 timestamp = 5;
+}
+
+message LocalMetrics {
+  double accuracy = 1;
+  double precision = 2;
+  double recall = 3;
+  double f1_score = 4;
+  double roc_auc = 5;
+  double log_loss = 6;
+  int32 training_samples = 7;
+  int32 validation_samples = 8;
+}
+
+// Admin monitoring messages
+message Empty {}
+
+message ServerStatusResponse {
+  bool running = 1;
+  string session_id = 2;
+  int32 connected_clients_count = 3;
+  int32 expected_clients = 4;
+  int64 server_start_time = 5;
+  int32 total_rounds_completed = 6;
+  bool aggregation_in_progress = 7;
+}
+
+message ClientInfo {
+  string client_id = 1;
+  int64 joined_at = 2;
+  bool has_sent_weights = 3;
+  bool has_sent_metrics = 4;
+  int32 model_size_bytes = 5;
+  int32 num_trees = 6;
+}
+
+message ConnectedClientsResponse {
+  repeated ClientInfo clients = 1;
+  int32 total_count = 2;
+}
+
+message TrainingStatsResponse {
+  int32 total_weights_received = 1;
+  int32 total_metrics_received = 2;
+  int32 aggregations_completed = 3;
+  int64 last_aggregation_time = 4;
+  repeated ClientMetricsSummary client_metrics = 5;
+}
+
+message ClientMetricsSummary {
+  string client_id = 1;
+  double accuracy = 2;
+  double f1_score = 3;
+  int32 training_samples = 4;
+}

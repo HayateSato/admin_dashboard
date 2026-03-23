@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+{% block title %}Record Linkage - Privacy Umbrella Admin{% endblock %}
+{% block content %}
+<h1><i class="bi bi-link-45deg"></i> Record Linkage - Patient Data Fetching</h1>
+
+<div class="alert alert-secondary">
+    <i class="bi bi-info-circle"></i>
+    <strong>Privacy-Preserving Record Linkage:</strong> Enter patient's personal information OR their unique key to fetch data from InfluxDB and PostgreSQL.
+</div>
+
+<!-- Patient Data Fetch Form -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-person-badge"></i> Patient Information
+    </div>
+    <div class="card-body">
+        <!-- Mode Selection -->
+        <div class="mb-4">
+            <label class="form-label"><strong>Search Method:</strong></label>
+            <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="search-mode" id="mode-personal-info" value="personal-info" checked>
+                <label class="btn btn-outline-dark" for="mode-personal-info">
+                    <i class="bi bi-person-badge"></i> Search by Personal Information
+                </label>
+
+                <input type="radio" class="btn-check" name="search-mode" id="mode-unique-key-search" value="unique-key">
+                <label class="btn btn-outline-dark" for="mode-unique-key-search">
+                    <i class="bi bi-key"></i> Search by Unique Key
+                </label>
+            </div>
+        </div>
+
+        <!-- Mode A: Personal Information Form -->
+        <form id="recordLinkageForm" style="display: block;">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="given_name" class="form-label">Given Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="given_name" name="given_name" required
+                           placeholder="e.g., John">
+                </div>
+                <div class="col-md-6">
+                    <label for="family_name" class="form-label">Family Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="family_name" name="family_name" required
+                           placeholder="e.g., Doe">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="dob" class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="dob" name="dob" required>
+                    <small class="text-muted">Format: YYYY-MM-DD</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="gender" class="form-label">Gender <span class="text-danger">*</span></label>
+                    <select class="form-control" id="gender" name="gender" required>
+                        <option value="">-- Select Gender --</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="start_time" class="form-label">Start Time (Optional)</label>
+                    <input type="datetime-local" class="form-control" id="start_time" name="start_time">
+                    <small class="text-muted">Leave empty for last 24 hours</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="end_time" class="form-label">End Time (Optional)</label>
+                    <input type="datetime-local" class="form-control" id="end_time" name="end_time">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include_raw" checked>
+                        <label class="form-check-label" for="include_raw">
+                            Include Raw Sensor Data
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include_anonymized" checked>
+                        <label class="form-check-label" for="include_anonymized">
+                            Include Anonymized Data
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="limit" class="form-label">Data Limit</label>
+                    <input type="number" class="form-control" id="limit" name="limit" value="1000" min="1" max="10000">
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-dark btn-lg">
+                    <i class="bi bi-search"></i> Fetch Patient Data
+                </button>
+            </div>
+        </form>
+
+        <!-- Mode B: Unique Key Form -->
+        <form id="uniqueKeySearchForm" style="display: none;">
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label for="unique_key_search" class="form-label">Unique Key <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control font-monospace" id="unique_key_search" name="unique_key"
+                           placeholder="ApAQAICFCAcAAFAAQQIAggAMABmg0UEIQCAMgpCkiICjgRQEIUAAAaNAAwACEAAVhCAJGAYIgACRIcAAIgCA"
+                           pattern="[A-Za-z0-9+/=]+"
+                           minlength="64"
+                           required>
+                    <small class="text-muted">Paste the base64-encoded unique key (from new bloom filter)</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="start_time_uk" class="form-label">Start Time (Optional)</label>
+                    <input type="datetime-local" class="form-control" id="start_time_uk" name="start_time">
+                    <small class="text-muted">Leave empty for last 24 hours</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="end_time_uk" class="form-label">End Time (Optional)</label>
+                    <input type="datetime-local" class="form-control" id="end_time_uk" name="end_time">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include_raw_uk" checked>
+                        <label class="form-check-label" for="include_raw_uk">
+                            Include Raw Sensor Data
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include_anonymized_uk" checked>
+                        <label class="form-check-label" for="include_anonymized_uk">
+                            Include Anonymized Data
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="limit_uk" class="form-label">Data Limit</label>
+                    <input type="number" class="form-control" id="limit_uk" name="limit" value="1000" min="1" max="10000">
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-dark btn-lg">
+                    <i class="bi bi-search"></i> Fetch Patient Data
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="text-center my-4" style="display: none;">
+    <div class="spinner-border text-secondary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Fetching patient data...</p>
+</div>
+
+<!-- Results Section -->
+<div id="resultsSection" style="display: none;">
+    <!-- Query Summary -->
+    <div class="card mb-3">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-check-circle"></i> Query Summary
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Patient Name:</strong> <span id="result_name"></span></p>
+                    <p><strong>Date of Birth:</strong> <span id="result_dob"></span></p>
+                    <p><strong>Gender:</strong> <span id="result_gender"></span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Unique Key (SHA256):</strong> <code id="result_unique_key"></code></p>
+                    <p><strong>Query Timestamp:</strong> <span id="result_timestamp"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Summary -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <i class="bi bi-bar-chart"></i> Data Summary
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="text-primary" id="total_data_points">0</h5>
+                            <small>Total ECG Data Points Fetched</small>
+                            <div class="mt-2 text-muted" style="font-size: 0.85em;">
+                                <i class="bi bi-info-circle"></i> Limited to 1000 points
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="text-info" id="raw_data_points">0</h5>
+                            <small>Raw ECG Data Points</small>
+                            <div class="mt-2 text-muted" style="font-size: 0.85em;">
+                                <span id="raw_data_total">0</span> total fetched
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="text-success" id="anon_data_points">0</h5>
+                            <small>Anonymized ECG Data</small>
+                            <div class="mt-2 text-muted" style="font-size: 0.85em;">
+                                <span id="anon_data_total">0</span> total fetched
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 id="metadata_status">
+                                <i class="bi bi-question-circle text-secondary"></i>
+                            </h5>
+                            <small>Metadata Found</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Metadata -->
+    <div class="card mb-3" id="metadataCard" style="display: none;">
+        <div class="card-header">
+            <i class="bi bi-person-lines-fill"></i> Patient Metadata
+        </div>
+        <div class="card-body">
+            <pre id="metadata_content" class="bg-light p-3"></pre>
+        </div>
+    </div>
+
+    <!-- Raw Sensor Data Table -->
+    <div class="card mb-3" id="rawDataCard" style="display: none;">
+        <div class="card-header">
+            <i class="bi bi-graph-up"></i> Raw Sensor Data
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Measurement</th>
+                            <th>Field</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rawDataTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anonymized Data Table -->
+    <div class="card mb-3" id="anonDataCard" style="display: none;">
+        <div class="card-header">
+            <i class="bi bi-shield-check"></i> Anonymized Data
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Measurement</th>
+                            <th>Field</th>
+                            <th>Value</th>
+                            <th>K-Value</th>
+                            <th>Time Window</th>
+                        </tr>
+                    </thead>
+                    <tbody id="anonDataTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Buttons -->
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-download"></i> Export Data
+        </div>
+        <div class="card-body">
+            <button class="btn btn-dark me-2" id="exportCsvBtn">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
+            </button>
+            <button class="btn btn-secondary" id="exportJsonBtn">
+                <i class="bi bi-file-earmark-code"></i> Export to JSON
+            </button>
+            <p class="text-muted mt-2 mb-0">
+                <small>Exported files will be saved to the server's exports directory</small>
+            </p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPatientData = null;
+
+// Mode switching
+document.querySelectorAll('input[name="search-mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const personalInfoForm = document.getElementById('recordLinkageForm');
+        const uniqueKeyForm = document.getElementById('uniqueKeySearchForm');
+
+        if (this.value === 'personal-info') {
+            personalInfoForm.style.display = 'block';
+            uniqueKeyForm.style.display = 'none';
+        } else {
+            personalInfoForm.style.display = 'none';
+            uniqueKeyForm.style.display = 'block';
+        }
+    });
+});
+
+// Personal Information Form submission
+document.getElementById('recordLinkageForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    // Show loading
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Get form data
+    const formData = {
+        given_name: document.getElementById('given_name').value,
+        family_name: document.getElementById('family_name').value,
+        dob: document.getElementById('dob').value,
+        gender: document.getElementById('gender').value,
+        start_time: document.getElementById('start_time').value || null,
+        end_time: document.getElementById('end_time').value || null,
+        include_raw: document.getElementById('include_raw').checked,
+        include_anonymized: document.getElementById('include_anonymized').checked,
+        limit: parseInt(document.getElementById('limit').value)
+    };
+
+    try {
+        // Fetch patient data
+        const response = await fetch('/api/record-linkage/fetch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentPatientData = result.data;
+            displayResults(result.data);
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to fetch patient data: ' + error.message);
+    } finally {
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+});
+
+// Unique Key Form submission
+document.getElementById('uniqueKeySearchForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const uniqueKey = document.getElementById('unique_key_search').value.trim();
+
+    // Validate unique key format (base64)
+    if (!/^[A-Za-z0-9+/=]+$/.test(uniqueKey) || uniqueKey.length < 64) {
+        alert('Invalid unique key format. Must be a base64-encoded string (at least 64 characters).');
+        return;
+    }
+
+    // Show loading
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Get form data
+    const formData = {
+        unique_key: uniqueKey,
+        start_time: document.getElementById('start_time_uk').value || null,
+        end_time: document.getElementById('end_time_uk').value || null,
+        include_raw: document.getElementById('include_raw_uk').checked,
+        include_anonymized: document.getElementById('include_anonymized_uk').checked,
+        limit: parseInt(document.getElementById('limit_uk').value)
+    };
+
+    try {
+        // Fetch patient data by unique key
+        const response = await fetch('/api/record-linkage/fetch-by-key', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentPatientData = result.data;
+            displayResults(result.data);
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to fetch patient data: ' + error.message);
+    } finally {
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+});
+
+// Display results
+function displayResults(data) {
+    console.log('Displaying results:', data);
+
+    // Show results section first
+    document.getElementById('resultsSection').style.display = 'block';
+
+    // Query info - with null checks
+    const resultName = document.getElementById('result_name');
+    const resultDob = document.getElementById('result_dob');
+    const resultGender = document.getElementById('result_gender');
+    const resultUniqueKey = document.getElementById('result_unique_key');
+    const resultTimestamp = document.getElementById('result_timestamp');
+
+    if (resultName) resultName.textContent = `${data.query_info.given_name} ${data.query_info.family_name}`;
+    if (resultDob) resultDob.textContent = data.query_info.dob;
+    if (resultGender) resultGender.textContent = data.query_info.gender;
+    if (resultUniqueKey) resultUniqueKey.textContent = data.query_info.unique_key;
+    if (resultTimestamp) resultTimestamp.textContent = new Date(data.query_info.timestamp).toLocaleString();
+
+    // Summary - displayed counts with null checks
+    const totalDataPoints = document.getElementById('total_data_points');
+    const rawDataPoints = document.getElementById('raw_data_points');
+    const anonDataPoints = document.getElementById('anon_data_points');
+
+    if (totalDataPoints) totalDataPoints.textContent = data.summary.total_data_points;
+    if (rawDataPoints) rawDataPoints.textContent = data.summary.raw_data_points;
+    if (anonDataPoints) anonDataPoints.textContent = data.summary.anonymized_data_points;
+
+    // Summary - total counts in database with null checks
+    const totalDataInDb = document.getElementById('total_data_in_db');
+    const rawDataTotal = document.getElementById('raw_data_total');
+    const anonDataTotal = document.getElementById('anon_data_total');
+
+    if (totalDataInDb) totalDataInDb.textContent = data.summary.total_data_in_db || data.summary.total_data_points;
+    if (rawDataTotal) rawDataTotal.textContent = data.summary.raw_data_total || data.summary.raw_data_points;
+    if (anonDataTotal) anonDataTotal.textContent = data.summary.anonymized_data_total || data.summary.anonymized_data_points;
+
+    // Metadata status with null check
+    const metadataStatus = document.getElementById('metadata_status');
+    if (metadataStatus) {
+        const metadataIcon = data.summary.metadata_found
+            ? '<i class="bi bi-check-circle text-success"></i>'
+            : '<i class="bi bi-x-circle text-danger"></i>';
+        metadataStatus.innerHTML = metadataIcon;
+    }
+
+    // Metadata
+    if (data.metadata) {
+        const metadataCard = document.getElementById('metadataCard');
+        const metadataContent = document.getElementById('metadata_content');
+        if (metadataCard) metadataCard.style.display = 'block';
+        if (metadataContent) metadataContent.textContent = JSON.stringify(data.metadata, null, 2);
+    }
+
+    // Raw data table
+    if (data.raw_sensor_data.count > 0) {
+        const rawDataCard = document.getElementById('rawDataCard');
+        const tbody = document.getElementById('rawDataTable');
+        if (rawDataCard && tbody) {
+            rawDataCard.style.display = 'block';
+            tbody.innerHTML = '';
+            data.raw_sensor_data.data.forEach(point => {
+                const row = `<tr>
+                    <td>${new Date(point.timestamp).toLocaleString()}</td>
+                    <td>${point.measurement}</td>
+                    <td>${point.field}</td>
+                    <td>${point.value}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+    }
+
+    // Anonymized data table
+    if (data.anonymized_data.count > 0) {
+        const anonDataCard = document.getElementById('anonDataCard');
+        const tbody = document.getElementById('anonDataTable');
+        if (anonDataCard && tbody) {
+            anonDataCard.style.display = 'block';
+            tbody.innerHTML = '';
+            data.anonymized_data.data.forEach(point => {
+                const row = `<tr>
+                    <td>${new Date(point.timestamp).toLocaleString()}</td>
+                    <td>${point.measurement}</td>
+                    <td>${point.field}</td>
+                    <td>${point.value}</td>
+                    <td>${point.k_value || 'N/A'}</td>
+                    <td>${point.time_window || 'N/A'}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+    }
+
+    console.log('Results displayed successfully');
+}
+
+// Export to CSV
+document.getElementById('exportCsvBtn').addEventListener('click', async function() {
+    if (!currentPatientData) {
+        alert('No data to export');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/record-linkage/export-csv', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({patient_data: currentPatientData})
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(`Data exported to CSV: ${result.filename}`);
+        } else {
+            alert('Export failed: ' + result.error);
+        }
+    } catch (error) {
+        alert('Export failed: ' + error.message);
+    }
+});
+
+// Export to JSON
+document.getElementById('exportJsonBtn').addEventListener('click', async function() {
+    if (!currentPatientData) {
+        alert('No data to export');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/record-linkage/export-json', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({patient_data: currentPatientData})
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(`Data exported to JSON: ${result.filename}`);
+        } else {
+            alert('Export failed: ' + result.error);
+        }
+    } catch (error) {
+        alert('Export failed: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

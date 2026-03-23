@@ -1,0 +1,131 @@
+{
+  "current_model": {
+    "model_type": "persistent_xgb_ensemble",
+    "round_number": 5,
+    "aggregated_weights": {
+      "trees": [
+        {
+          "tree_structure": "{\"type\":\"node\",\"featureIndex\":0,\"threshold\":0.16666666666666666,\"leftChild\":{\"type\":\"leaf\",\"prediction\":0.0},\"rightChild\":{\"type\":\"leaf\",\"prediction\":0.0}}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"node\",\"featureIndex\":0,\"threshold\":0.15,\"leftChild\":{\"type\":\"node\",\"featureIndex\":1,\"threshold\":0.5,\"leftChild\":{\"type\":\"leaf\",\"prediction\":1.0},\"rightChild\":{\"type\":\"leaf\",\"prediction\":0.0}},\"rightChild\":{\"type\":\"leaf\",\"prediction\":0.0}}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":0.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":0.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        },
+        {
+          "tree_structure": "{\"type\":\"leaf\",\"prediction\":0.0}",
+          "client_id": 1,
+          "original_tree_id": 0
+        }
+      ],
+      "feature_importance": {},
+      "config": {
+        "objective": "binary:logistic",
+        "maxDepth": 6,
+        "learningRate": 0.1,
+        "regAlpha": 0.0,
+        "regLambda": 1.0,
+        "gamma": 0.0,
+        "minChildWeight": 1.0,
+        "subsample": 1.0,
+        "colsampleByTree": 1.0,
+        "nEstimators": 100,
+        "basePrediction": 0.0
+      },
+      "num_boosted_rounds": 5,
+      "num_features": 0,
+      "client_contributions": [
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        },
+        {
+          "client_id": 1,
+          "num_trees": 1,
+          "num_features": 0
+        }
+      ],
+      "aggregation_metadata": {
+        "method": "simple_blend",
+        "timestamp": "2025-11-12T17:42:08.866089",
+        "existing_trees": 4,
+        "new_trees": 1,
+        "total_trees": 5
+      }
+    },
+    "ensemble_info": {
+      "total_trees": 5,
+      "num_clients": 5,
+      "aggregation_method": "bagging_with_persistence",
+      "creation_timestamp": "2025-11-12T17:42:08.866818",
+      "is_incremental": true
+    }
+  },
+  "model_history": [
+    {
+      "round": 1,
+      "num_trees": 1,
+      "num_clients": 1,
+      "timestamp": "2025-11-12T17:10:29.968806",
+      "is_incremental": false
+    },
+    {
+      "round": 2,
+      "num_trees": 2,
+      "num_clients": 2,
+      "timestamp": "2025-11-12T17:31:43.212033",
+      "is_incremental": true
+    },
+    {
+      "round": 3,
+      "num_trees": 3,
+      "num_clients": 3,
+      "timestamp": "2025-11-12T17:42:08.447211",
+      "is_incremental": true
+    },
+    {
+      "round": 4,
+      "num_trees": 4,
+      "num_clients": 4,
+      "timestamp": "2025-11-12T17:42:08.645901",
+      "is_incremental": true
+    },
+    {
+      "round": 5,
+      "num_trees": 5,
+      "num_clients": 5,
+      "timestamp": "2025-11-12T17:42:08.866818",
+      "is_incremental": true
+    }
+  ],
+  "round_number": 5,
+  "last_saved": "2025-11-12T17:42:08.866824"
+}
