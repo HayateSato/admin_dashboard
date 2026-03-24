@@ -13,8 +13,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
 
-# Add utils_fl to path to import FL server modules
-UTILS_FL_DIR = Path(__file__).parent / "utils_fl"
+# grpc/ lives one level up from core/ in the restructured project layout
+UTILS_FL_DIR = Path(__file__).parent.parent / "grpc"
 sys.path.insert(0, str(UTILS_FL_DIR))
 
 try:
