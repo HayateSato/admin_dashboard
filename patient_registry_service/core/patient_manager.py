@@ -177,6 +177,61 @@ class PatientManager:
             logger.error(f"Error retrieving patient {unique_key[:16]}...: {e}")
             return None
 
+    def register_patient(self, unique_key: str, device_id: str, privacy_settings: Dict) -> Dict:
+        """
+        Register a new patient, or update device_id if already registered (idempotent).
+
+        Returns:
+            {'registered': True, 'already_existed': bool}
+        """
+        import json
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO users (unique_key, device_id, privacy_settings, last_session, updated_at)
+                VALUES (%s, %s, %s::jsonb, NOW(), NOW())
+                ON CONFLICT (unique_key) DO UPDATE
+                    SET device_id    = EXCLUDED.device_id,
+                        last_session = NOW(),
+                        updated_at   = NOW()
+                RETURNING (xmax = 0) AS inserted;
+            """, (unique_key, device_id, json.dumps(privacy_settings)))
+
+            row = cursor.fetchone()
+            conn.commit()
+            cursor.close()
+
+            was_inserted = row[0] if row else False
+            logger.info(f"{'Registered new' if was_inserted else 'Updated existing'} patient {unique_key[:16]}...")
+            return {'registered': True, 'already_existed': not was_inserted}
+
+        except Exception as e:
+            logger.error(f"Error registering patient: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return {'registered': False, 'error': str(e)}
+
+    def update_last_session(self, unique_key: str) -> bool:
+        """Stamp last_session = NOW() when a device connects."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE users SET last_session = NOW(), updated_at = NOW() WHERE unique_key = %s;",
+                (unique_key,)
+            )
+            conn.commit()
+            affected = cursor.rowcount
+            cursor.close()
+            return affected > 0
+        except Exception as e:
+            logger.error(f"Error updating last_session for {unique_key[:16]}...: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+
     def update_privacy_settings(self, unique_key: str, settings: Dict) -> bool:
         """
         Update privacy settings for a patient in users table

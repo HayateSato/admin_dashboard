@@ -104,6 +104,39 @@ def get_patient(unique_key):
     return jsonify({'success': True, 'patient': patient})
 
 
+@app.route('/api/patients', methods=['POST'])
+def register_patient():
+    """Register a new patient device. Idempotent — safe to call on every app launch."""
+    err = _auth_error()
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    unique_key = data.get('unique_key', '').strip()
+    device_id  = data.get('device_id', '').strip()
+
+    if not unique_key:
+        return jsonify({'success': False, 'error': 'unique_key is required'}), 400
+
+    default_settings = {
+        'k_value':        int(data.get('k_value', 5)),
+        'time_window':    int(data.get('time_window', 30)),
+        'auto_anonymize': bool(data.get('auto_anonymize', False)),
+    }
+
+    result = patient_manager.register_patient(unique_key, device_id, default_settings)
+    status_code = 201 if not result.get('already_existed') else 200
+    return jsonify({'success': result['registered'], **result}), status_code
+
+
+@app.route('/api/patients/<unique_key>/heartbeat', methods=['POST'])
+def heartbeat(unique_key):
+    """Update last_session timestamp. Call when the Flutter app connects."""
+    err = _auth_error()
+    if err: return err
+    ok = patient_manager.update_last_session(unique_key)
+    return jsonify({'success': ok})
+
+
 @app.route('/api/patients/<unique_key>/settings', methods=['POST'])
 def update_settings(unique_key):
     """Update privacy settings in DB and publish to device via MQTT."""

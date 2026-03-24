@@ -180,6 +180,7 @@ services:
       RECORD_LINKAGE_URL:     http://record_linkage:7003
       CENTRAL_ANON_URL:       http://central_anon:6000
       REDIS_URL:              redis://redis:6379/0
+      DEVICE_API_KEY:         ${DEVICE_API_KEY:-}
       PORT:                   5000
     volumes:
       - dashboard_logs:/app/logs

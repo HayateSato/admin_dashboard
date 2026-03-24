@@ -59,6 +59,10 @@ FEDERATED_LEARNING_URL = os.getenv('FEDERATED_LEARNING_URL', 'http://localhost:7
 RECORD_LINKAGE_URL     = os.getenv('RECORD_LINKAGE_URL',      'http://localhost:7003')
 CENTRAL_ANON_URL       = os.getenv('CENTRAL_ANON_URL',        'http://localhost:6000')
 
+# API key for device (Flutter app) access — set in .env
+# Routes under /api/device/* use this instead of session-based auth
+DEVICE_API_KEY = os.getenv('DEVICE_API_KEY', '')
+
 # Hardcoded default admin — replace with DB-backed user management for production
 _ADMIN_PASSWORD_HASH = hashlib.sha256(
     os.getenv('ADMIN_PASSWORD', 'admin123').encode()
@@ -106,6 +110,19 @@ def admin_required(f):
         if 'user' not in session or session.get('role') != 'admin':
             flash('Admin access required', 'danger')
             return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def device_required(f):
+    """Auth decorator for Flutter device routes (/api/device/*).
+    Checks X-API-Key header against DEVICE_API_KEY env var.
+    If DEVICE_API_KEY is empty, all requests are allowed (dev mode).
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if DEVICE_API_KEY and request.headers.get('X-API-Key') != DEVICE_API_KEY:
+            return jsonify({'success': False, 'error': 'Invalid or missing API key'}), 401
         return f(*args, **kwargs)
     return decorated
 
@@ -455,6 +472,40 @@ def api_anon_job_status(job_id):
 @login_required
 def api_anon_job_cancel(job_id):
     return _proxy('post', CENTRAL_ANON_URL, f'/api/v1/anonymize/jobs/{job_id}/cancel')
+
+# ---------------------------------------------------------------------------
+# Admin — single patient lookup
+# ---------------------------------------------------------------------------
+
+@app.route('/api/patients/<unique_key>', methods=['GET'])
+@login_required
+def api_patient_get(unique_key):
+    return _proxy('get', PATIENT_REGISTRY_URL, f'/api/patients/{unique_key}')
+
+# ---------------------------------------------------------------------------
+# Device routes — Flutter app (authenticated via X-API-Key, not session)
+# ---------------------------------------------------------------------------
+
+@app.route('/api/device/register', methods=['POST'])
+@device_required
+def api_device_register():
+    """Register or update a patient device. Idempotent — safe to call on every app launch."""
+    return _proxy('post', PATIENT_REGISTRY_URL, '/api/patients',
+                  json=request.get_json(silent=True) or {})
+
+
+@app.route('/api/device/patients/<unique_key>', methods=['GET'])
+@device_required
+def api_device_patient_get(unique_key):
+    """Fetch a single patient's settings (k_value, time_window, auto_anonymize, remote_anon_enabled)."""
+    return _proxy('get', PATIENT_REGISTRY_URL, f'/api/patients/{unique_key}')
+
+
+@app.route('/api/device/patients/<unique_key>/heartbeat', methods=['POST'])
+@device_required
+def api_device_heartbeat(unique_key):
+    """Update last_session timestamp. Call when the Flutter app connects."""
+    return _proxy('post', PATIENT_REGISTRY_URL, f'/api/patients/{unique_key}/heartbeat')
 
 # ---------------------------------------------------------------------------
 # Error pages
