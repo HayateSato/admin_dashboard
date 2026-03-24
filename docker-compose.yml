@@ -44,6 +44,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: privacy_umbrella_redis
+    restart: unless-stopped
+    networks:
+      - privacy_umbrella_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── Microservices ─────────────────────────────────────────────────────────
 
   patient_registry:
@@ -165,12 +177,15 @@ services:
       FEDERATED_LEARNING_URL: http://federated_learning:7002
       RECORD_LINKAGE_URL:     http://record_linkage:7003
       CENTRAL_ANON_URL:       http://central_anon:6000
+      REDIS_URL:              redis://redis:6379/0
       PORT:                   5000
     volumes:
       - dashboard_logs:/app/logs
     networks:
       - privacy_umbrella_network
     depends_on:
+      redis:
+        condition: service_healthy
       patient_registry:
         condition: service_healthy
       federated_learning:

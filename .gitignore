@@ -54,3 +54,4 @@ templates/old
 docs/rest_api_notes.md
 docs/architecture_migration_notes.md
 docs/FLUTTER_CLAUDE.md
+docs/redis_sessions.md

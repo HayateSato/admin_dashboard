@@ -25,10 +25,12 @@ import logging
 from datetime import datetime, timedelta
 from functools import wraps
 
+import redis as _redis
 import requests as _requests
 from flask import (Flask, render_template, request, jsonify,
                    redirect, url_for, session, flash)
 from flask_cors import CORS
+from flask_session import Session
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -50,6 +52,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 SECRET_KEY             = os.getenv('SECRET_KEY', secrets.token_hex(32))
 SESSION_TIMEOUT_HOURS  = int(os.getenv('SESSION_TIMEOUT_HOURS', 8))
+REDIS_URL              = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 PATIENT_REGISTRY_URL   = os.getenv('PATIENT_REGISTRY_URL',   'http://localhost:7001')
 FEDERATED_LEARNING_URL = os.getenv('FEDERATED_LEARNING_URL', 'http://localhost:7002')
@@ -67,6 +70,20 @@ _ADMIN_PASSWORD_HASH = hashlib.sha256(
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = SECRET_KEY
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=SESSION_TIMEOUT_HOURS)
+
+# Redis-backed server-side sessions
+# Session data is stored in Redis; the browser only holds an opaque session ID cookie.
+app.config['SESSION_TYPE']             = 'redis'
+app.config['SESSION_REDIS']            = _redis.from_url(REDIS_URL)
+app.config['SESSION_PERMANENT']        = True
+app.config['SESSION_USE_SIGNER']       = True   # signs the cookie so it can't be forged
+app.config['SESSION_KEY_PREFIX']       = 'pu_session:'
+Session(app)
+
+# Separate Redis client used only for caching (DB 1, so cache and sessions don't share a namespace)
+_cache = _redis.from_url(REDIS_URL.rstrip('/0').rstrip('/') + '/1')
+HEALTH_CACHE_TTL = 10  # seconds
+
 CORS(app)
 
 # ---------------------------------------------------------------------------
@@ -149,22 +166,46 @@ def logout():
 # Page routes (serve HTML)
 # ---------------------------------------------------------------------------
 
+def _cached_health(url: str):
+    """
+    Fetch /health for a service, caching the result in Redis for HEALTH_CACHE_TTL seconds.
+
+    Cache key:  health:<url>
+    Cache value: JSON string {"status": "ok"|"error"|"unreachable", "data": {...}}
+
+    Returns (status_str, detail_dict).
+    """
+    import json
+    cache_key = f'health:{url}'
+
+    # 1. Try the cache first
+    cached = _cache.get(cache_key)
+    if cached:
+        payload = json.loads(cached)
+        logger.debug(f"Cache HIT  {cache_key}")
+        return payload['status'], payload['data']
+
+    # 2. Cache miss — call the real service
+    logger.debug(f"Cache MISS {cache_key}")
+    try:
+        r = _requests.get(url + '/health', timeout=3)
+        data = r.json()
+        status = 'ok' if r.ok else 'error'
+    except Exception:
+        status, data = 'unreachable', {}
+
+    # 3. Store result in Redis with TTL
+    _cache.set(cache_key, json.dumps({'status': status, 'data': data}), ex=HEALTH_CACHE_TTL)
+    return status, data
+
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    def _health(url):
-        """Return (status_str, detail_dict) for a service /health endpoint."""
-        try:
-            r = _requests.get(url + '/health', timeout=3)
-            data = r.json()
-            return ('ok' if r.ok else 'error'), data
-        except Exception:
-            return 'unreachable', {}
-
-    fl_status,       fl_data       = _health(FEDERATED_LEARNING_URL)
-    patient_status,  _             = _health(PATIENT_REGISTRY_URL)
-    record_status,   _             = _health(RECORD_LINKAGE_URL)
-    anon_status,     _             = _health(CENTRAL_ANON_URL)
+    fl_status,       fl_data       = _cached_health(FEDERATED_LEARNING_URL)
+    patient_status,  _             = _cached_health(PATIENT_REGISTRY_URL)
+    record_status,   _             = _cached_health(RECORD_LINKAGE_URL)
+    anon_status,     _             = _cached_health(CENTRAL_ANON_URL)
 
     fl_server_running = fl_data.get('fl_server_running', False)
 

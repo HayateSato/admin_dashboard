@@ -51,6 +51,7 @@ Browser / Flutter app
         ▼
    [ dashboard ]          ← Only public web entry point
    Flask UI + auth           Proxies every /api/* call to a backend service
+        │  ↕ Redis :6379 (sessions DB0, health cache DB1)
         │
         ├─── :7001 ──→  [ patient_registry_service ]
         │                  PostgreSQL · MQTT → IoT devices
@@ -88,6 +89,7 @@ External:
 | Component | Exposed ports | What it does |
 |-----------|--------------|-------------|
 | PostgreSQL 15 | internal only | Patient metadata, privacy policies |
+| Redis 7 | internal only | Dashboard sessions (DB 0) + health check cache (DB 1) |
 | Mosquitto MQTT | 1883 (TCP), 9001 (WS) | Message broker between server and IoT devices |
 | nginx | 80, 443 | TLS termination, HTTP→HTTPS redirect |
 | InfluxDB | remote | Raw and anonymized ECG time-series data |
@@ -190,6 +192,7 @@ You do not need to run all services at once. Start only what you need:
 | record_linkage | — (internal) | HTTP | dashboard only |
 | FL gRPC | — (internal) | gRPC | federated_learning_server only |
 | PostgreSQL | — (internal) | TCP | patient_registry, record_linkage |
+| Redis | — (internal) | TCP | dashboard only |
 
 ---
 
