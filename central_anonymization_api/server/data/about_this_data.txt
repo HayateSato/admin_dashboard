@@ -1,0 +1,13 @@
+
+FILE NAME: Demo_dataset
+Recorded by SmarKo, exported by SmarKo app
+
+Property	                Value
+---------------------------------------------------------------------------------------------
+Total rows	                6,972
+Rows with ECG data	        3,892 (the rest have ecg=0 or NaN — likely non-ECG sensor rows)
+Duration	                ~32 seconds
+Sampling rate	            ~121 Hz (~8.3 ms between samples)
+ECG range	                -634 to 638 uV
+ECG mean / std	            -15.5 / 136.0 uV
+Recorded	                2025-10-29, 14:56:20 to 14:56:52

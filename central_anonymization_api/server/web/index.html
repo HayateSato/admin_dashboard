@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ECG Anonymization Demo — PrivacyUmbrella</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .pearson-bar { transition: width 0.6s ease; }
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .spinner {
+      border: 3px solid #e5e7eb;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      width: 32px; height: 32px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4 shadow-sm">
+    <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm select-none">PU</div>
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900">ECG Anonymization Demo</h1>
+      <p class="text-xs text-gray-500">Tumbling Window K-Anonymization &mdash; PrivacyUmbrella Research</p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- ── Settings card ──────────────────────────────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-5">Settings</h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+
+        <!-- K-value -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Privacy level &nbsp;<span class="text-gray-400 font-normal">(k-value)</span>
+          </label>
+          <select id="kValue"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="2">k = 2 &nbsp;—&nbsp; minimal</option>
+            <option value="3">k = 3</option>
+            <option value="5" selected>k = 5 &nbsp;—&nbsp; recommended low</option>
+            <option value="10">k = 10</option>
+            <option value="20">k = 20 &nbsp;—&nbsp; recommended high</option>
+            <option value="30">k = 30 &nbsp;—&nbsp; strict</option>
+          </select>
+          <p class="mt-1 text-xs text-gray-400">Higher = more privacy, lower signal fidelity</p>
+        </div>
+
+        <!-- Tumbling Window -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Tumbling Window &nbsp;<span class="text-gray-400 font-normal">(T)</span>
+          </label>
+          <select id="timeWindow"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="5" selected>T = 5s</option>
+            <option value="10">T = 10s</option>
+            <option value="15">T = 15s</option>
+            <option value="20">T = 20s</option>
+            <option value="30">T = 30s &nbsp;—&nbsp; best utility</option>
+          </select>
+          <p class="mt-1 text-xs text-gray-400">Longer tumbling window = better utility at same k</p>
+        </div>
+
+        <!-- CSV upload -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Dataset &nbsp;<span class="text-gray-400 font-normal">(CSV)</span>
+          </label>
+          <label class="flex items-center gap-2 w-full rounded-lg border border-dashed border-gray-300
+                         px-3 py-2 text-sm text-gray-500 cursor-pointer hover:border-blue-400
+                         hover:bg-blue-50 transition-colors">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <span id="fileLabel">Use demo data</span>
+            <input type="file" id="csvFile" accept=".csv" class="hidden" />
+          </label>
+          <p class="mt-1 text-xs text-gray-400">Must have "timestamp" and "ecg" columns</p>
+        </div>
+      </div>
+
+      <!-- Run button -->
+      <div class="mt-6 flex items-center gap-4">
+        <button id="runBtn" onclick="runAnonymization()"
+          class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium
+                 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          Run Anonymization
+        </button>
+        <button id="resetBtn" onclick="resetFile()" class="hidden text-sm text-gray-400 hover:text-gray-600 underline">
+          Remove uploaded file
+        </button>
+        <span id="statusMsg" class="text-sm text-gray-500"></span>
+      </div>
+    </section>
+
+    <!-- ── Result area (hidden until first run) ───────────────────────── -->
+    <section id="resultSection" class="hidden fade-in space-y-5">
+
+      <!-- Plot -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Signal Comparison</h2>
+        <div id="plotContainer" class="flex items-center justify-center min-h-[200px]">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- Pearson R + stats -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+        <!-- Pearson card -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Signal Fidelity</h2>
+          <p class="text-xs text-gray-400 mb-4">
+            Pearson correlation between the original and anonymized ECG signal.
+            A value close to <strong>1.0</strong> means the signal shape is well preserved.
+          </p>
+          <div class="flex items-end gap-3 mb-3">
+            <span class="text-4xl font-bold" id="pearsonValue">—</span>
+            <span class="text-sm text-gray-400 mb-1">Pearson r</span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-3">
+            <div id="pearsonBar"
+                 class="pearson-bar h-3 rounded-full bg-blue-500"
+                 style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>0 (no correlation)</span><span>1.0 (perfect)</span>
+          </div>
+        </div>
+
+        <!-- Stats card -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Run Statistics</h2>
+          <table class="w-full text-sm" id="statsTable">
+            <tbody class="divide-y divide-gray-100">
+              <tr><td class="py-1.5 text-gray-500">K-value used</td><td class="py-1.5 font-medium text-right" id="statK">—</td></tr>
+              <tr><td class="py-1.5 text-gray-500">Tumbling Window (T)</td><td class="py-1.5 font-medium text-right" id="statT">—</td></tr>
+              <tr><td class="py-1.5 text-gray-500">Total ECG records</td><td class="py-1.5 font-medium text-right" id="statTotal">—</td></tr>
+              <tr><td class="py-1.5 text-gray-500">Anonymized records</td><td class="py-1.5 font-medium text-right" id="statAnon">—</td></tr>
+              <tr><td class="py-1.5 text-gray-500">Tumbling Windows processed</td><td class="py-1.5 font-medium text-right" id="statBatches">—</td></tr>
+              <tr><td class="py-1.5 text-gray-500">Zero-ECG skipped</td><td class="py-1.5 font-medium text-right" id="statSkipped">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Explainer (always visible) ────────────────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-sm text-gray-600 space-y-3">
+      <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">How It Works</h2>
+      <p>
+        The ECG signal is split into non-overlapping <strong>Tumbling Windows</strong> of T seconds each.
+        Within each window, values are sorted and grouped using a pre-built generalization hierarchy.
+        The algorithm promotes each value to a coarser range until each group contains at least
+        <strong>k</strong> identical values — satisfying <em>k-anonymity</em>.
+        The midpoint of each range is then used as the published value (<em>mean imputation</em>).
+      </p>
+      <p>
+        <strong>Trade-off:</strong> a higher k provides stronger privacy but distorts the signal more.
+        A longer Tumbling Window T preserves more signal shape because more values per window gives the
+        algorithm more flexibility — enabling finer-grained anonymization ranges.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────────── -->
+  <footer class="text-center text-xs text-gray-400 py-8 border-t border-gray-100 mt-4">
+    PrivacyUmbrella &mdash; ECG Anonymization Algorithm Demo implemented by MCS Data Labs 
+  </footer>
+
+  <script>
+    // ── File input label update ───────────────────────────────────────────────
+    document.getElementById('csvFile').addEventListener('change', function () {
+      const label = document.getElementById('fileLabel');
+      const resetBtn = document.getElementById('resetBtn');
+      if (this.files.length > 0) {
+        label.textContent = this.files[0].name;
+        resetBtn.classList.remove('hidden');
+      } else {
+        label.textContent = 'Use demo data';
+        resetBtn.classList.add('hidden');
+      }
+    });
+
+    function resetFile() {
+      const input = document.getElementById('csvFile');
+      input.value = '';
+      document.getElementById('fileLabel').textContent = 'Use demo data';
+      document.getElementById('resetBtn').classList.add('hidden');
+    }
+
+    // ── Main run function ─────────────────────────────────────────────────────
+    async function runAnonymization() {
+      const btn     = document.getElementById('runBtn');
+      const statusEl = document.getElementById('statusMsg');
+      const resultSection = document.getElementById('resultSection');
+      const plotContainer = document.getElementById('plotContainer');
+
+      btn.disabled = true;
+      btn.textContent = 'Running…';
+      statusEl.textContent = '';
+
+      // Show result section with spinner
+      resultSection.classList.remove('hidden');
+      plotContainer.innerHTML = '<div class="spinner"></div>';
+
+      const k_value             = document.getElementById('kValue').value;
+      const time_window_seconds = document.getElementById('timeWindow').value;
+      const csvFile             = document.getElementById('csvFile').files[0];
+
+      const formData = new FormData();
+      formData.append('k_value', k_value);
+      formData.append('time_window_seconds', time_window_seconds);
+      if (csvFile) formData.append('csv_file', csvFile);
+
+      try {
+        const resp = await fetch('/api/v1/visualize', { method: 'POST', body: formData });
+        const data = await resp.json();
+
+        if (!data.success) {
+          showError(data.error || 'Unknown server error');
+          return;
+        }
+
+        // ── Plot ──────────────────────────────────────────────────────────────
+        const img = document.createElement('img');
+        img.src = 'data:image/png;base64,' + data.plot_base64;
+        img.className = 'w-full rounded';
+        img.alt = 'ECG comparison plot';
+        plotContainer.innerHTML = '';
+        plotContainer.appendChild(img);
+
+        // ── Pearson R ─────────────────────────────────────────────────────────
+        const r = data.pearson_r;
+        const rDisplay = (r !== null && r !== undefined) ? r.toFixed(4) : 'N/A';
+        document.getElementById('pearsonValue').textContent = rDisplay;
+
+        // Bar colour: green ≥ 0.9, yellow ≥ 0.7, red otherwise
+        const barEl = document.getElementById('pearsonBar');
+        const barPct = r !== null ? Math.max(0, Math.min(100, r * 100)) : 0;
+        barEl.style.width = barPct + '%';
+        barEl.className = 'pearson-bar h-3 rounded-full ' +
+          (r >= 0.9 ? 'bg-green-500' : r >= 0.7 ? 'bg-yellow-400' : 'bg-red-400');
+
+        // ── Stats ─────────────────────────────────────────────────────────────
+        const s = data.stats;
+        document.getElementById('statK').textContent       = s.k_value;
+        document.getElementById('statT').textContent       = s.time_window_seconds + 's';
+        document.getElementById('statTotal').textContent   = s.total_records.toLocaleString();
+        document.getElementById('statAnon').textContent    = s.anonymized_records.toLocaleString();
+        document.getElementById('statBatches').textContent = s.batches_processed;
+        document.getElementById('statSkipped').textContent =
+          (s.validation?.zero_ecg_skipped ?? 0).toLocaleString();
+
+        statusEl.textContent = 'Done';
+        statusEl.className = 'text-sm text-green-600';
+
+      } catch (err) {
+        showError('Network error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Anonymization';
+      }
+    }
+
+    function showError(msg) {
+      const plotContainer = document.getElementById('plotContainer');
+      plotContainer.innerHTML =
+        `<div class="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3 w-full">
+           <strong>Error:</strong> ${msg}
+         </div>`;
+      document.getElementById('statusMsg').textContent = '';
+    }
+  </script>
+</body>
+</html>

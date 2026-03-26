@@ -55,7 +55,7 @@ class EcgHierarchy:
 
             valid_lines = 0
             with open(csv_path, 'r') as f:
-                reader = csv.reader(f)
+                reader = csv.reader(f, delimiter=';')
 
                 for line in reader:
                     if not line or len(line) < 9:  # Need: leaf + 7 levels + root

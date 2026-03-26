@@ -1,0 +1,10 @@
+services:
+  ecg-anon-demo:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DEFAULT_K_VALUE: 5
+      FLASK_DEBUG: "false"
+    restart: unless-stopped

@@ -1,16 +1,23 @@
-# ── Central Anonymization API — Dependencies ──────────────────────────────
+# ── ECG Anonymization Demo — Dependencies ─────────────────────────────────────
 #
-# Install all (server + client):
+# Install all dependencies (server + client):
 #   pip install -r requirements.txt
 #
-# The k-anonymity algorithm itself (core/) uses only Python stdlib —
-# no extra packages needed for the algorithm.
+# The k-anonymity algorithm itself (core/) uses only Python stdlib.
+# Extra packages are needed for the server's visualization endpoint and the
+# Python client helper.
 
-# Server
+# ── Server ──────────────────────────────────────────────────────────────────
 Flask>=3.0.0
 flask-cors>=4.0.0
 python-dotenv>=1.0.0
 
-# Client
+# Visualization (server/visualization/ecg_plotter.py)
+matplotlib>=3.7.0
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+
+# ── Client ──────────────────────────────────────────────────────────────────
 requests>=2.31.0
 urllib3>=2.0.0

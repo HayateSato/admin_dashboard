@@ -22,8 +22,7 @@ ENV/
 
 # Output files
 output/
-*.csv
-!anonymizer/smarko_hierarchy_ecg.csv
+
 
 # IDE
 .vscode/
@@ -47,12 +46,3 @@ output/
 
 quick_mqtt_test.py
 templates/old
-
-.claude
-
-# Local notes (personal reference docs, not for repo)
-docs/rest_api_notes.md
-docs/architecture_migration_notes.md
-docs/FLUTTER_CLAUDE.md
-docs/redis_sessions.md
-_ignore/
